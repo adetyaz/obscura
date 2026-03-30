@@ -1,0 +1,15 @@
+{
+	"servers": {
+		"svelte": {
+			"url": "https://mcp.svelte.dev/mcp"
+		},
+
+		"stitch": {
+			"type": "http",
+			"url": "https://stitch.googleapis.com/mcp",
+			"headers": {
+				"X-Goog-Api-Key": "AQ.Ab8RN6Jv0Dli7SKvI4MVGL3ElOcOHEh_7uKIRQ7nA-cOat8zQg"
+			}
+		}
+	}
+}

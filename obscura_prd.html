@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Obscura — Product Requirements Document</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Instrument+Sans:wght@400;500;600&family=Syne:wght@800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0a0a08;
+    --paper: #f5f2eb;
+    --paper-dark: #ede9df;
+    --accent: #c8401a;
+    --accent-warm: #e8a04a;
+    --teal: #1a6b5c;
+    --muted: #6b6657;
+    --border: #d4cfc3;
+    --serif: 'DM Serif Display', Georgia, serif;
+    --mono: 'DM Mono', monospace;
+    --sans: 'Instrument Sans', sans-serif;
+    --logo: 'Syne', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.7;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 9999; opacity: 0.35;
+  }
+
+  .page { max-width: 920px; margin: 0 auto; padding: 0 40px 120px; }
+
+  /* COVER */
+  .cover { padding: 72px 0 56px; border-bottom: 1.5px solid var(--ink); position: relative; }
+  .cover-stripe {
+    position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    background: repeating-linear-gradient(90deg, var(--accent) 0 60px, transparent 60px 80px);
+  }
+  .cover-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; flex-wrap: wrap; gap: 16px; }
+  .logo {
+    font-family: var(--logo);
+    font-weight: 800;
+    font-size: 28px;
+    letter-spacing: -1px;
+    color: var(--ink);
+    position: relative;
+    display: inline-block;
+  }
+  .logo-redact {
+    position: absolute;
+    background: var(--paper);
+    height: 6px;
+    width: 18px;
+    top: 11px;
+    left: 1px;
+  }
+  .cover-meta-top {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-align: right;
+    line-height: 2;
+  }
+  .doc-type {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+  .cover-title {
+    font-family: var(--serif);
+    font-size: clamp(40px, 6vw, 64px);
+    line-height: 1.0;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+  .cover-title em { font-style: italic; color: var(--accent); }
+  .cover-sub {
+    font-family: var(--serif);
+    font-size: 20px;
+    font-style: italic;
+    color: var(--muted);
+    margin-bottom: 32px;
+  }
+  .cover-desc {
+    max-width: 600px;
+    font-size: 16px;
+    line-height: 1.8;
+    border-left: 3px solid var(--accent);
+    padding-left: 20px;
+  }
+  .cover-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+  .tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border: 1px solid var(--border);
+    background: var(--paper-dark);
+    color: var(--muted);
+  }
+  .tag.accent { background: var(--accent); color: white; border-color: var(--accent); }
+  .tag.teal { background: var(--teal); color: white; border-color: var(--teal); }
+
+  /* SECTIONS */
+  .section { margin-top: 72px; }
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .section-title {
+    font-family: var(--serif);
+    font-size: clamp(26px, 4vw, 38px);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    margin-bottom: 20px;
+  }
+  .section-body { font-size: 15px; line-height: 1.8; color: #2a2820; max-width: 700px; }
+  .section-body + .section-body { margin-top: 16px; }
+
+  /* INSIGHT */
+  .insight {
+    margin: 36px 0;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 28px 32px;
+    position: relative;
+  }
+  .insight-text {
+    font-family: var(--serif);
+    font-size: 20px;
+    font-style: italic;
+    line-height: 1.45;
+  }
+  .insight-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--accent-warm);
+    margin-top: 10px;
+    text-transform: uppercase;
+  }
+
+  /* GOAL TABLE */
+  .goal-grid { margin: 32px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); border: 1px solid var(--border); }
+  .goal-cell { background: var(--paper); padding: 22px 20px; }
+  .goal-cell.full { grid-column: 1 / -1; background: var(--ink); color: var(--paper); }
+  .goal-cell-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+  .goal-cell.full .goal-cell-label { color: var(--accent-warm); }
+  .goal-cell-value { font-family: var(--serif); font-size: 17px; line-height: 1.3; }
+  .goal-cell.full .goal-cell-value { color: var(--paper); }
+  .goal-cell-sub { font-size: 13px; color: var(--muted); margin-top: 4px; line-height: 1.55; }
+  .goal-cell.full .goal-cell-sub { color: #9a9280; }
+
+  /* USER TABLE */
+  .user-grid { margin: 32px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .user-card { border: 1px solid var(--border); padding: 24px 22px; background: var(--paper); }
+  .user-card-role { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+  .user-card-name { font-family: var(--serif); font-size: 22px; margin-bottom: 12px; }
+  .user-card-body { font-size: 14px; color: var(--muted); line-height: 1.65; }
+  .user-card-needs { margin-top: 14px; }
+  .user-card-need { font-size: 13px; color: var(--ink); padding: 6px 0; border-top: 1px solid var(--border); display: flex; gap: 10px; }
+  .user-card-need::before { content: '—'; color: var(--accent); flex-shrink: 0; }
+
+  /* STORY BLOCK */
+  .story-block { margin: 10px 0; border-left: 3px solid var(--border); padding: 14px 20px; background: var(--paper-dark); }
+  .story-block.primary { border-left-color: var(--accent); }
+  .story-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .story-text { font-size: 14px; line-height: 1.7; color: var(--ink); }
+  .story-text strong { font-weight: 600; }
+
+  /* ACCEPTANCE */
+  .ac-list { margin: 8px 0 0; list-style: none; }
+  .ac-list li { font-size: 13px; color: var(--muted); padding: 4px 0; padding-left: 18px; position: relative; line-height: 1.55; }
+  .ac-list li::before { content: '✓'; position: absolute; left: 0; color: var(--teal); font-size: 11px; top: 5px; }
+
+  /* WAVE CARDS */
+  .wave-card { margin: 28px 0; border: 1px solid var(--border); overflow: hidden; }
+  .wave-header { padding: 22px 24px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+  .wave-header-left {}
+  .wave-num { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
+  .wave-title { font-family: var(--serif); font-size: 24px; line-height: 1.15; }
+  .wave-meta { text-align: right; }
+  .wave-badge { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 12px; border: 1px solid var(--border); color: var(--muted); display: inline-block; margin-bottom: 6px; }
+  .wave-badge.active { background: var(--accent); color: white; border-color: var(--accent); }
+  .wave-scope { font-size: 12px; color: var(--muted); }
+  .wave-body { padding: 24px; }
+  .wave-goal { font-size: 15px; line-height: 1.75; color: var(--ink); margin-bottom: 24px; border-left: 3px solid var(--accent); padding-left: 16px; }
+  .wave-stories { display: flex; flex-direction: column; gap: 0; }
+  .wave-story { padding: 18px 0; border-bottom: 1px solid var(--border); }
+  .wave-story:last-child { border-bottom: none; padding-bottom: 0; }
+  .wave-story-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+  .wave-story-id { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; color: var(--accent); flex-shrink: 0; }
+  .wave-story-title { font-family: var(--serif); font-size: 17px; }
+  .wave-story-actor { font-family: var(--mono); font-size: 10px; padding: 2px 8px; background: var(--paper-dark); border: 1px solid var(--border); color: var(--muted); letter-spacing: 0.06em; }
+  .wave-story-body { font-size: 14px; color: var(--muted); line-height: 1.65; margin-bottom: 10px; }
+
+  /* TECH STACK */
+  .stack-table { margin: 28px 0; border: 1px solid var(--border); }
+  .stack-row { display: grid; grid-template-columns: 160px 1fr; border-bottom: 1px solid var(--border); }
+  .stack-row:last-child { border-bottom: none; }
+  .stack-layer { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding: 14px 18px; background: var(--paper-dark); border-right: 1px solid var(--border); display: flex; align-items: center; }
+  .stack-content { padding: 14px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .stack-chip { font-family: var(--mono); font-size: 11px; padding: 3px 10px; border: 1px solid var(--border); background: white; color: var(--ink); }
+  .stack-chip.fhe { background: #fce8e2; border-color: #f5c4b4; color: var(--accent); }
+  .stack-chip.priv { background: #e4f0ec; border-color: #b8d8cf; color: var(--teal); }
+  .stack-desc { font-size: 12px; color: var(--muted); }
+
+  /* MVP SUMMARY */
+  .mvp-grid { margin: 28px 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border: 1px solid var(--border); }
+  .mvp-col { border-right: 1px solid var(--border); overflow: hidden; }
+  .mvp-col:last-child { border-right: none; }
+  .mvp-col-head { padding: 16px 18px; background: var(--paper-dark); border-bottom: 1px solid var(--border); }
+  .mvp-col-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .mvp-col-title { font-family: var(--serif); font-size: 16px; }
+  .mvp-col-body { padding: 16px 18px; }
+  .mvp-item { font-size: 13px; color: var(--muted); padding: 5px 0; border-bottom: 1px solid var(--border); line-height: 1.5; display: flex; gap: 8px; }
+  .mvp-item:last-child { border-bottom: none; }
+  .mvp-item::before { content: '—'; color: var(--border); flex-shrink: 0; }
+
+  /* FOOTER */
+  .footer { margin-top: 80px; padding-top: 24px; border-top: 1.5px solid var(--ink); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  .footer-logo { font-family: var(--logo); font-weight: 800; font-size: 20px; letter-spacing: -0.5px; position: relative; display: inline-block; }
+  .footer-logo-redact { position: absolute; background: var(--paper); height: 4px; width: 13px; top: 8px; left: 1px; }
+  .footer-meta { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- COVER -->
+  <div class="cover">
+    <div class="cover-stripe"></div>
+    <div class="cover-top">
+      <div class="logo">OBSCURA<div class="logo-redact"></div></div>
+      <div class="cover-meta-top">
+        <div>Product Requirements Document</div>
+        <div>Version 1.0 — March 2026</div>
+        <div>Akindo WaveHack · Wave 1</div>
+      </div>
+    </div>
+    <div class="doc-type">PRD — Full MVP &amp; Wave Breakdown</div>
+    <h1 class="cover-title">Private <em>credit</em><br>infrastructure<br>for real markets</h1>
+    <p class="cover-sub">From invoice to liquidity — without exposing a thing</p>
+    <p class="cover-desc">
+      This document defines what Obscura is, who it serves, what the final MVP delivers, and how the build is broken into five executable waves — each a complete, testable workflow with defined user stories and acceptance criteria.
+    </p>
+    <div class="cover-tags">
+      <span class="tag accent">Wave 1 — Buildathon</span>
+      <span class="tag teal">Fhenix FHE</span>
+      <span class="tag teal">Privara</span>
+      <span class="tag">ERC-4626 / ERC-1155</span>
+      <span class="tag">SME + Lender</span>
+      <span class="tag">Africa · SE Asia · MENA</span>
+    </div>
+  </div>
+
+  <!-- 01 PROBLEM -->
+  <div class="section">
+    <div class="section-label">01 — Problem Statement</div>
+    <h2 class="section-title">The market exists. Privacy doesn't.</h2>
+    <p class="section-body">
+      Invoice financing is a $3 trillion global market. SMEs across Lagos, Nairobi, Jakarta, and Karachi hold billions in unpaid invoices from Tier-1 corporates and government entities. Lenders have idle capital seeking real-world yield. The mechanism is understood. The demand is proven. Yet the market has not moved on-chain at scale.
+    </p>
+    <p class="section-body" style="margin-top:16px;">
+      The reason is singular and specific: privacy. To finance an invoice on-chain today, an SME must expose their client relationships, invoice amounts, buyer identity, and payment history — permanently and publicly — to every competitor, regulator, and observer on the network. No serious business accepts this. Centrifuge proved the mechanics work. Goldfinch proved the demand is real in emerging markets. Neither solved privacy. Neither scaled.
+    </p>
+    <div class="insight">
+      <p class="insight-text">FHE is the only cryptographic primitive that enables computation on encrypted data without decryption. The credit score, the yield calculation, the compliance check — all run on ciphertext. Nothing touches plaintext on-chain, ever.</p>
+      <p class="insight-label">Core technical thesis</p>
+    </div>
+  </div>
+
+  <!-- 02 PRODUCT VISION -->
+  <div class="section">
+    <div class="section-label">02 — Product Vision</div>
+    <h2 class="section-title">What Obscura is</h2>
+    <p class="section-body">
+      Obscura is a privacy-preserving invoice financing protocol. SMEs tokenize unpaid invoices as encrypted real-world assets. Lenders finance them without seeing the underlying data. Compliance proofs are generated on demand. The protocol runs on Fhenix FHE for computation on ciphertext and Privara for compliant payment rails.
+    </p>
+
+    <div class="goal-grid">
+      <div class="goal-cell full">
+        <div class="goal-cell-label">Product statement</div>
+        <div class="goal-cell-value">Obscura turns unpaid invoices into private, financeable on-chain assets — giving SMEs liquidity without exposing their business, and giving lenders yield without requiring trust in plaintext data.</div>
+      </div>
+      <div class="goal-cell">
+        <div class="goal-cell-label">For SMEs</div>
+        <div class="goal-cell-value">Working capital access</div>
+        <div class="goal-cell-sub">Submit an invoice, receive a stablecoin advance within the same session. No collateral. No exposed client relationships. No competitor intelligence leakage.</div>
+      </div>
+      <div class="goal-cell">
+        <div class="goal-cell-label">For lenders</div>
+        <div class="goal-cell-value">Real-world yield with privacy</div>
+        <div class="goal-cell-sub">Browse risk scores, fund invoices, earn financing fees. Never see invoice amounts or buyer identities. Risk is assessed by FHE — not by trust.</div>
+      </div>
+      <div class="goal-cell">
+        <div class="goal-cell-label">For regulators</div>
+        <div class="goal-cell-value">Selective disclosure on demand</div>
+        <div class="goal-cell-sub">Threshold proofs generated without exposing underlying data. Compliance without surveillance.</div>
+      </div>
+      <div class="goal-cell">
+        <div class="goal-cell-label">Primary markets</div>
+        <div class="goal-cell-value">Africa, SE Asia, MENA</div>
+        <div class="goal-cell-sub">SME credit gaps are largest where privacy requirements are highest and traditional rails are weakest.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 03 USERS -->
+  <div class="section">
+    <div class="section-label">03 — Users</div>
+    <h2 class="section-title">Who this is built for</h2>
+    <p class="section-body">Two primary actors, equal in importance. The protocol only works when both are present — SMEs need lenders to fund invoices, lenders need SMEs to generate yield.</p>
+
+    <div class="user-grid">
+      <div class="user-card">
+        <div class="user-card-role">Primary actor 01</div>
+        <div class="user-card-name">The SME Originator</div>
+        <div class="user-card-body">A business in an emerging market holding unpaid invoices from a creditworthy buyer. They need liquidity now — not in 90 days when the invoice settles. They cannot afford to expose their client relationships or business volume on a public ledger.</div>
+        <div class="user-card-needs">
+          <div class="user-card-need">Submit an invoice and receive a stablecoin advance quickly</div>
+          <div class="user-card-need">Keep buyer identity and invoice amount private</div>
+          <div class="user-card-need">Repay at maturity when the buyer pays them</div>
+          <div class="user-card-need">Build a credit history that improves future terms</div>
+          <div class="user-card-need">Meet compliance requirements without full disclosure</div>
+        </div>
+      </div>
+      <div class="user-card">
+        <div class="user-card-role">Primary actor 02</div>
+        <div class="user-card-name">The Lender</div>
+        <div class="user-card-body">A DeFi participant, African asset manager, or institutional capital allocator seeking real-world yield. They want verified, risk-scored receivables — but not the legal and reputational exposure of seeing sensitive SME business data.</div>
+        <div class="user-card-needs">
+          <div class="user-card-need">Browse invoices by risk score without seeing raw data</div>
+          <div class="user-card-need">Fund invoices and earn a financing fee</div>
+          <div class="user-card-need">Trust that credit scoring is computed, not claimed</div>
+          <div class="user-card-need">Trigger escalation if a borrower defaults</div>
+          <div class="user-card-need">Maintain compliance without holding sensitive counterparty data</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 04 FULL MVP -->
+  <div class="section">
+    <div class="section-label">04 — Full MVP Definition</div>
+    <h2 class="section-title">What the complete product delivers</h2>
+    <p class="section-body">
+      The full Obscura MVP is a working, deployed protocol with two user-facing dashboards, four smart contracts, Fhenix FHE computation, and Privara payment rails. It handles three invoice types across three pool tiers, with encrypted reputation scoring, selective disclosure, and default escalation. This is the target the five waves build toward.
+    </p>
+
+    <div class="mvp-grid">
+      <div class="mvp-col">
+        <div class="mvp-col-head">
+          <div class="mvp-col-label">Smart contracts</div>
+          <div class="mvp-col-title">On-chain layer</div>
+        </div>
+        <div class="mvp-col-body">
+          <div class="mvp-item">CredentialRegistry.sol — encrypted KYB/KYC</div>
+          <div class="mvp-item">InvoiceVault.sol — encrypt + mint ERC-1155</div>
+          <div class="mvp-item">CreditOracle.sol — FHE credit scoring</div>
+          <div class="mvp-item">FinancingPool.sol — fund, escrow, settle</div>
+          <div class="mvp-item">Institutional, Government, Retail pool tiers</div>
+          <div class="mvp-item">Default escalation + threshold decryption</div>
+        </div>
+      </div>
+      <div class="mvp-col">
+        <div class="mvp-col-head">
+          <div class="mvp-col-label">User interfaces</div>
+          <div class="mvp-col-title">Frontend layer</div>
+        </div>
+        <div class="mvp-col-body">
+          <div class="mvp-item">SME dashboard — submit, track, repay</div>
+          <div class="mvp-item">Lender dashboard — browse, fund, monitor</div>
+          <div class="mvp-item">Wallet connection + KYB/KYC flow via Privara</div>
+          <div class="mvp-item">Risk score display (no raw data shown)</div>
+          <div class="mvp-item">Selective disclosure proof generator</div>
+          <div class="mvp-item">Reputation score history (Wave 3+)</div>
+        </div>
+      </div>
+      <div class="mvp-col">
+        <div class="mvp-col-head">
+          <div class="mvp-col-label">Protocol features</div>
+          <div class="mvp-col-title">Core capabilities</div>
+        </div>
+        <div class="mvp-col-body">
+          <div class="mvp-item">FHE invoice encryption via Fhenix</div>
+          <div class="mvp-item">Homomorphic credit scoring on ciphertext</div>
+          <div class="mvp-item">Privara stablecoin disbursement</div>
+          <div class="mvp-item">Three invoice workflows (corporate, govt, freelancer)</div>
+          <div class="mvp-item">Encrypted reputation scoring + portability</div>
+          <div class="mvp-item">Threshold proof generation for compliance</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack-table">
+      <div class="stack-row">
+        <div class="stack-layer">FHE</div>
+        <div class="stack-content"><span class="stack-chip fhe">Fhenix coprocessor</span><span class="stack-desc">Encrypted computation — credit scoring, yield calc, compliance checks on ciphertext</span></div>
+      </div>
+      <div class="stack-row">
+        <div class="stack-layer">Payment</div>
+        <div class="stack-content"><span class="stack-chip priv">Privara</span><span class="stack-desc">KYB/KYC onboarding, USDC disbursement, sanctions screening, FX off-ramp</span></div>
+      </div>
+      <div class="stack-row">
+        <div class="stack-layer">Token standard</div>
+        <div class="stack-content"><span class="stack-chip">ERC-1155</span><span class="stack-chip">ERC-4626</span><span class="stack-desc">Private RWA token + standard vault interface</span></div>
+      </div>
+      <div class="stack-row">
+        <div class="stack-layer">Oracles</div>
+        <div class="stack-content"><span class="stack-chip">Chainlink</span><span class="stack-chip">Pyth</span><span class="stack-desc">Encrypted buyer credit ratings, FX rates, company registry lookups</span></div>
+      </div>
+      <div class="stack-row">
+        <div class="stack-layer">Deployment</div>
+        <div class="stack-content"><span class="stack-chip">Base / Arbitrum</span><span class="stack-chip fhe">Fhenix coprocessor</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 05 WAVE BREAKDOWN -->
+  <div class="section">
+    <div class="section-label">05 — Wave Breakdown</div>
+    <h2 class="section-title">Five waves. Each one complete.</h2>
+    <p class="section-body">
+      Every wave is a fully working slice of the protocol — not a partial build or a stub. Each wave has a primary workflow, defined user stories, and acceptance criteria that can be tested from end to end before the next wave begins. Waves stack on each other. Nothing is thrown away.
+    </p>
+
+    <!-- WAVE 1 -->
+    <div class="wave-card">
+      <div class="wave-header">
+        <div class="wave-header-left">
+          <div class="wave-num">Wave 01</div>
+          <div class="wave-title">Corporate Invoice — End to End</div>
+        </div>
+        <div class="wave-meta">
+          <div class="wave-badge active">Buildathon scope</div>
+          <div class="wave-scope">Fhenix + Privara · Mock data · Deployed contracts</div>
+        </div>
+      </div>
+      <div class="wave-body">
+        <div class="wave-goal">
+          A Lagos FMCG supplier submits an $80,000 invoice from Unilever Nigeria, receives a stablecoin advance, and a lender funds it — all within a single deployed dApp with real Fhenix FHE encryption and Privara payment rails. The full corporate invoice lifecycle runs end to end with mock buyer oracle data.
+        </div>
+
+        <div class="wave-stories">
+
+          <div class="wave-story">
+            <div class="wave-story-header">
+              <span class="wave-story-id">US-01</span>
+              <span class="wave-story-title">Wallet connection &amp; KYB onboarding</span>
+              <span class="wave-story-actor">SME</span>
+            </div>
+            <div class="wave-story-body">As an SME, I want to connect my wallet and complete business verification so that I can access the protocol and submit invoices.</div>
+            <ul class="ac-list">
+              <li>SME connects wallet via standard web3 modal</li>
+              <li>Privara KYB flow launches and collects business credentials</li>
+              <li>Encrypted credential minted to CredentialRegistry.sol as ciphertext</li>
+              <li>SME receives a verified status on their dashboard — no raw credential data visible on-chain</li>
+              <li>Unverified wallets cannot submit invoices</li>
+            </ul>
+          </div>
+
+          <div class="wave-story">
+            <div class="wave-story-header">
+              <span class="wave-story-id">US-02</span>
+              <span class="wave-story-title">Invoice submission &amp; encryption</span>
+              <span class="wave-story-actor">SME</span>
+            </div>
+            <div class="wave-story-body">As an SME, I want to submit an invoice so that it is encrypted and tokenized as a private RWA without exposing my buyer or invoice amount to anyone.</div>
+            <ul class="ac-list">
+              <li>SME inputs invoice amount, buyer name, and due date in the dashboard</li>
+              <li>Fhenix coprocessor encrypts all invoice fields on submission</li>
+              <li>InvoiceVault.sol mints a private ERC-1155 token representing the invoice</li>
+              <li>Token appears on the financing marketplace — amount and buyer name not visible</li>
+              <li>SME dashboard confirms submission with token ID and encrypted status</li>
+            </ul>
+          </div>
+
+          <div class="wave-story">
+            <div class="wave-story-header">
+              <span class="wave-story-id">US-03</span>
+              <span class="wave-story-title">FHE credit scoring</span>
+              <span class="wave-story-actor">Protocol</span>
+            </div>
+            <div class="wave-story-body">As the protocol, I want to compute a credit risk score on encrypted invoice data so that lenders can assess risk without seeing any raw invoice information.</div>
+            <ul class="ac-list">
+              <li>CreditOracle.sol runs FHE computation on encrypted invoice fields</li>
+              <li>Checks: invoice amount within pool range, buyer creditworthiness above threshold (mock oracle), due date within tenor</li>
+              <li>Returns a risk score (e.g. A–, 87/100) — no raw data exposed</li>
+              <li>Score attached to the invoice token on the marketplace</li>
+              <li>Invoices failing the credit check are flagged as ineligible — SME notified without reason detail</li>
+            </ul>
+          </div>
+
+          <div class="wave-story">
+            <div class="wave-story-header">
+              <span class="wave-story-id">US-04</span>
+              <span class="wave-story-title">Lender onboarding &amp; marketplace access</span>
+              <span class="wave-story-actor">Lender</span>
+            </div>
+            <div class="wave-story-body">As a lender, I want to connect my wallet and access the financing marketplace so that I can browse invoices by risk score and fund them.</div>
+            <ul class="ac-list">
+              <li>Lender connects wallet and completes accredited lender verification via Privara</li>
+              <li>Lender dashboard displays available invoices showing: risk score, advance amount, discount rate, tenor — nothing else</li>
+              <li>Invoice amounts and buyer identities are not shown at any point</li>
+              <li>Lender can filter by risk tier and tenor</li>
+            </ul>
+          </div>
+
+          <div class="wave-story">
+            <div class="wave-story-header">
+              <span class="wave-story-id">US-05</span>
+              <span class="wave-story-title">Invoice funding &amp; advance disbursement</span>
+              <span class="wave-story-actor">Lender + SME</span>
+            </div>
+            <div class="wave-story-body">As a lender, I want to fund an invoice at a discount rate so that the SME receives a stablecoin advance and I hold a claim on the full settlement amount at maturity.</div>
+            <ul class="ac-list">
+              <li>Lender selects an invoice and confirms funding terms (advance %, discount rate)</li>
+              <li>SME accepts terms on-chain</li>
+              <li>FinancingPool.sol locks the invoice token in escrow</li>
+              <li>Privara releases USDC advance to SME wallet</li>
+              <li>Both dashboards update: SME shows advance received, lender shows active position</li>
+            </ul>
+          </div>
+
+          <div class="wave-story">
+            <div class="wave-story-header">
+              <span class="wave-story-id">US-06</span>
+              <span class="wave-story-title">Repayment &amp; auto-settlement</span>
+              <span class="wave-story-actor">SME + Lender</span>
+            </div>
+            <div class="wave-story-body">As an SME, I want to repay the advance at maturity so that the lender receives their principal plus financing fee and the invoice token is closed.</div>
+            <ul class="ac-list">
+              <li>SME triggers repayment from their dashboard</li>
+              <li>FinancingPool.sol auto-settles: lender receives principal + fee</li>
+              <li>Invoice token burned, position closed on both dashboards</li>
+              <li>Transaction confirmed on-chain with settlement receipt</li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- WAVE 2 -->
+    <div class="wave-card">
+      <div class="wave-header">
+        <div class="wave-header-left">
+          <div class="wave-num">Wave 02</div>
+          <div class="wave-title">Government Contract &amp; Freelancer Flows</div>
+        </div>
+        <div class="wave-meta">
+          <div class="wave-badge">Post-hackathon</div>
+          <div class="wave-scope">Additional pool tiers · Reputation scoring begins</div>
+        </div>
+      </div>
+      <div class="wave-body">
+        <div class="wave-goal">
+          Two new invoice types go live — a Kenyan construction firm financing a $500K government contract receivable, and a Nigerian developer advancing a $15K freelancer invoice from a UK client. The government-backed pool tier activates. Encrypted reputation scoring begins accumulating.
+        </div>
+        <div class="wave-stories">
+
+          <div class="wave-story">
+            <div class="wave-story-header">
+              <span class="wave-story-id">US-07</span>
+              <span class="wave-story-title">Government contract verification</span>
+              <span class="wave-story-actor">SME</span>
+            </div>
+            <div class="wave-story-body">As an SME with a government contract, I want to submit both the invoice and the signed contract reference so that my invoice is classified as government-backed and scores higher.</div>
+            <ul class="ac-list">
+              <li>SME uploads invoice + government contract reference number</li>
+              <li>Fhenix encrypts both documents; contract reference stored as ciphertext</li>
+              <li>FHE verifies contract reference matches a known government entity (encrypted oracle)</li>
+              <li>Token flagged as government-backed tier — elevated risk score automatically applied</li>
+              <li>Buyer identity (the Ministry) remains hidden throughout</li>
+            </ul>
+          </div>
+
+          <div class="wave-story">
+            <div class="wave-story-header">
+              <span class="wave-story-id">US-08</span>
+              <span class="wave-story-title">Freelancer KYC &amp; retail pool access</span>
+              <span class="wave-story-actor">Individual</span>
+            </div>
+            <div class="wave-story-body">As an individual freelancer, I want to complete a lighter KYC process and access the retail pool so that I can finance my invoices without the business verification required of SMEs.</div>
+            <ul class="ac-list">
+              <li>Individual KYC via Privara (lighter than KYB — no business registration required)</li>
+              <li>Encrypted credential: verified individual, jurisdiction, non-sanctioned</li>
+              <li>Freelancer invoices routed to retail pool (ticket size $1K–$50K)</li>
+              <li>FHE checks client is a registered company in their jurisdiction (encrypted registry oracle)</li>
+            </ul>
+          </div>
+
+          <div class="wave-story">
+            <div class="wave-story-header">
+              <span class="wave-story-id">US-09</span>
+              <span class="wave-story-title">Reputation score accumulation</span>
+              <span class="wave-story-actor">SME + Individual</span>
+            </div>
+            <div class="wave-story-body">As a borrower who has repaid an invoice, I want my on-chain reputation score to update so that future invoices score better and I qualify for higher advance rates.</div>
+            <ul class="ac-list">
+              <li>Successful repayment triggers encrypted reputation score update in CreditOracle.sol</li>
+              <li>Score is not visible — only its effect on future credit scoring is felt</li>
+              <li>After 3+ repayments, advance rate eligibility increases (85–90%)</li>
+              <li>Score is portable across pool tiers</li>
+            </ul>
+          </div>
+
+          <div class="wave-story">
+            <div class="wave-story-header">
+              <span class="wave-story-id">US-10</span>
+              <span class="wave-story-title">Default escalation</span>
+              <span class="wave-story-actor">Lender</span>
+            </div>
+            <div class="wave-story-body">As a lender, I want to trigger an escalation if a borrower has not repaid after the grace period so that I can recover my capital with full documentation.</div>
+            <ul class="ac-list">
+              <li>Grace period expires — lender can trigger escalation from dashboard</li>
+              <li>Multi-party threshold decryption unlocks buyer identity and invoice amount</li>
+              <li>Lender receives full documentation for legal recovery</li>
+              <li>This is the only moment any invoice data is decrypted in the protocol</li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- WAVE 3 -->
+    <div class="wave-card">
+      <div class="wave-header">
+        <div class="wave-header-left">
+          <div class="wave-num">Wave 03</div>
+          <div class="wave-title">Live RWA Wrappers &amp; Privara Full Integration</div>
+        </div>
+        <div class="wave-meta">
+          <div class="wave-badge">Post-hackathon</div>
+          <div class="wave-scope">Live oracles · Real compliance rail · FX off-ramp</div>
+        </div>
+      </div>
+      <div class="wave-body">
+        <div class="wave-goal">
+          Mock data is replaced with live oracle feeds. Privara's full compliance rail activates — including real sanctions screening, cross-border stablecoin disbursement, and NGN/KES/IDR FX off-ramp. The protocol becomes usable with real invoices from real businesses.
+        </div>
+        <div class="wave-stories">
+
+          <div class="wave-story">
+            <div class="wave-story-header">
+              <span class="wave-story-id">US-11</span>
+              <span class="wave-story-title">Live buyer credit oracle</span>
+              <span class="wave-story-actor">Protocol</span>
+            </div>
+            <div class="wave-story-body">As the protocol, I want to query live encrypted buyer credit data from Chainlink so that FHE credit scoring reflects real buyer creditworthiness rather than mock data.</div>
+            <ul class="ac-list">
+              <li>Chainlink oracle provides encrypted buyer credit ratings</li>
+              <li>CreditOracle.sol queries live data during FHE scoring computation</li>
+              <li>Credit scores update dynamically as buyer ratings change</li>
+              <li>Raw credit data is never exposed — only the computed score output</li>
+            </ul>
+          </div>
+
+          <div class="wave-story">
+            <div class="wave-story-header">
+              <span class="wave-story-id">US-12</span>
+              <span class="wave-story-title">Cross-border disbursement &amp; FX off-ramp</span>
+              <span class="wave-story-actor">SME + Individual</span>
+            </div>
+            <div class="wave-story-body">As an SME or freelancer in an emerging market, I want to receive my advance in local currency so that I can use the funds immediately without managing stablecoin conversion myself.</div>
+            <ul class="ac-list">
+              <li>Privara handles USDC → NGN / KES / IDR conversion at disbursement</li>
+              <li>SME receives local currency in their nominated bank account or mobile wallet</li>
+              <li>FX rate locked at time of funding agreement</li>
+              <li>Transaction confirmed in both USDC and local currency equivalent on dashboard</li>
+            </ul>
+          </div>
+
+          <div class="wave-story">
+            <div class="wave-story-header">
+              <span class="wave-story-id">US-13</span>
+              <span class="wave-story-title">Selective disclosure proof generation</span>
+              <span class="wave-story-actor">SME + Lender</span>
+            </div>
+            <div class="wave-story-body">As an SME or lender, I want to generate a compliance proof on demand so that I can satisfy regulatory requirements without revealing invoice data or counterparty identities.</div>
+            <ul class="ac-list">
+              <li>Dashboard provides a "Generate proof" action for any active or closed position</li>
+              <li>SME can generate: "total receivables exceed $X", "all buyers are non-sanctioned"</li>
+              <li>Lender can generate: "portfolio exposure below $Y", "all counterparties verified"</li>
+              <li>Proof verified on-chain — no invoice amounts or buyer names revealed</li>
+              <li>Proof downloadable as a signed document for regulatory submission</li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- WAVE 4 -->
+    <div class="wave-card">
+      <div class="wave-header">
+        <div class="wave-header-left">
+          <div class="wave-num">Wave 04</div>
+          <div class="wave-title">Permissionless Pool Factory &amp; Audit Interface</div>
+        </div>
+        <div class="wave-meta">
+          <div class="wave-badge">Post-hackathon</div>
+          <div class="wave-scope">Pool factory · Auditor UI · Institutional access</div>
+        </div>
+      </div>
+      <div class="wave-body">
+        <div class="wave-goal">
+          Any institution can deploy their own financing pool with custom parameters — ticket size, advance rate, tenor, credential requirements. A dedicated auditor interface allows regulators to request and verify threshold proofs without accessing the main protocol UI.
+        </div>
+        <div class="wave-stories">
+
+          <div class="wave-story">
+            <div class="wave-story-header">
+              <span class="wave-story-id">US-14</span>
+              <span class="wave-story-title">Permissionless pool deployment</span>
+              <span class="wave-story-actor">Lender / Institution</span>
+            </div>
+            <div class="wave-story-body">As an institution, I want to deploy my own financing pool with custom parameters so that I can run a private credit facility within the Obscura protocol.</div>
+            <ul class="ac-list">
+              <li>Pool factory UI allows any verified institution to deploy a pool</li>
+              <li>Parameters: ticket range, advance rate, discount rate, tenor, accepted credential types</li>
+              <li>Pool uses the same four core contracts — no new code required</li>
+              <li>Pool visible on marketplace immediately after deployment</li>
+            </ul>
+          </div>
+
+          <div class="wave-story">
+            <div class="wave-story-header">
+              <span class="wave-story-id">US-15</span>
+              <span class="wave-story-title">Auditor proof verification interface</span>
+              <span class="wave-story-actor">Auditor / Regulator</span>
+            </div>
+            <div class="wave-story-body">As a regulator, I want a dedicated interface to request and verify compliance proofs from Obscura participants so that I can perform regulatory oversight without accessing the main protocol UI.</div>
+            <ul class="ac-list">
+              <li>Auditor interface separate from SME and lender dashboards</li>
+              <li>Auditor submits a proof request to a participant</li>
+              <li>Participant approves the request and a threshold proof is generated</li>
+              <li>Auditor verifies the proof on-chain — receives a yes/no or aggregate result</li>
+              <li>No invoice data, counterparty names, or business relationships are revealed</li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- WAVE 5 -->
+    <div class="wave-card">
+      <div class="wave-header">
+        <div class="wave-header-left">
+          <div class="wave-num">Wave 05</div>
+          <div class="wave-title">Protocol Maturity — Scale &amp; Governance</div>
+        </div>
+        <div class="wave-meta">
+          <div class="wave-badge">Long-term</div>
+          <div class="wave-scope">Governance · Secondary market · Protocol token</div>
+        </div>
+      </div>
+      <div class="wave-body">
+        <div class="wave-goal">
+          Obscura becomes a self-governing protocol. Invoice tokens are tradeable on a private secondary market. A protocol governance token allows participants to vote on pool parameters, fee structures, and credential requirements. The protocol expands to cross-border trade finance.
+        </div>
+        <div class="wave-stories">
+
+          <div class="wave-story">
+            <div class="wave-story-header">
+              <span class="wave-story-id">US-16</span>
+              <span class="wave-story-title">Private secondary market for invoice tokens</span>
+              <span class="wave-story-actor">Lender</span>
+            </div>
+            <div class="wave-story-body">As a lender, I want to sell my position in a funded invoice before maturity so that I can manage liquidity without waiting for settlement.</div>
+            <ul class="ac-list">
+              <li>Lender can list an active invoice token on the private secondary market</li>
+              <li>Buyers see risk score and remaining tenor — no underlying invoice data</li>
+              <li>Transfer of token transfers the claim on settlement proceeds</li>
+              <li>Original SME repays to contract regardless of token ownership</li>
+            </ul>
+          </div>
+
+          <div class="wave-story">
+            <div class="wave-story-header">
+              <span class="wave-story-id">US-17</span>
+              <span class="wave-story-title">Protocol governance</span>
+              <span class="wave-story-actor">Protocol participants</span>
+            </div>
+            <div class="wave-story-body">As a protocol participant, I want to vote on pool parameters and fee structures so that the protocol is governed by its users rather than a central team.</div>
+            <ul class="ac-list">
+              <li>Governance token distributed to active SMEs, lenders, and pool operators</li>
+              <li>On-chain voting on: pool parameter changes, fee adjustments, new credential types</li>
+              <li>Proposals require a minimum quorum to pass</li>
+              <li>Executed automatically on-chain — no manual intervention required</li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 06 SUCCESS METRICS -->
+  <div class="section">
+    <div class="section-label">06 — Success Metrics</div>
+    <h2 class="section-title">How we know it worked</h2>
+
+    <div class="goal-grid">
+      <div class="goal-cell">
+        <div class="goal-cell-label">Wave 1 — Buildathon</div>
+        <div class="goal-cell-value">End-to-end demo runs</div>
+        <div class="goal-cell-sub">A judge can connect a wallet, submit a mock invoice, see it scored, fund it as a lender, and trigger repayment — all in a single session on deployed contracts.</div>
+      </div>
+      <div class="goal-cell">
+        <div class="goal-cell-label">Wave 1 — Technical</div>
+        <div class="goal-cell-value">FHE computation confirmed</div>
+        <div class="goal-cell-sub">Credit score returned from Fhenix coprocessor on encrypted inputs. Privara disburses test USDC to SME wallet. No invoice data visible on-chain at any point.</div>
+      </div>
+      <div class="goal-cell">
+        <div class="goal-cell-label">Wave 2 — Product</div>
+        <div class="goal-cell-value">Three workflows complete</div>
+        <div class="goal-cell-sub">Corporate, government, and freelancer invoice flows all complete end to end. Default escalation tested. Reputation score accumulates correctly.</div>
+      </div>
+      <div class="goal-cell">
+        <div class="goal-cell-label">Wave 3 — Market</div>
+        <div class="goal-cell-value">First real invoice financed</div>
+        <div class="goal-cell-sub">A real SME submits a real invoice, receives a real stablecoin advance, and repays at maturity. Live oracle data drives the credit score.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="footer-logo">OBSCURA<div class="footer-logo-redact"></div></div>
+    <div class="footer-meta">PRD v1.0 · March 2026 · Akindo WaveHack</div>
+    <div class="footer-meta">Private RWA Protocol · Fhenix · Privara</div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,179 @@
+export const InvoiceVaultABI = [
+	{
+		inputs: [{ internalType: 'address', name: '_credentialRegistry', type: 'address' }],
+		stateMutability: 'nonpayable',
+		type: 'constructor'
+	},
+	{
+		anonymous: false,
+		inputs: [{ indexed: true, internalType: 'address', name: 'oracle', type: 'address' }],
+		name: 'CreditOracleUpdated',
+		type: 'event'
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{ indexed: true, internalType: 'uint256', name: 'tokenId', type: 'uint256' },
+			{ indexed: true, internalType: 'address', name: 'submitter', type: 'address' }
+		],
+		name: 'InvoiceSubmitted',
+		type: 'event'
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{ indexed: true, internalType: 'address', name: 'operator', type: 'address' },
+			{ indexed: true, internalType: 'address', name: 'from', type: 'address' },
+			{ indexed: true, internalType: 'address', name: 'to', type: 'address' },
+			{ indexed: false, internalType: 'uint256', name: 'id', type: 'uint256' },
+			{ indexed: false, internalType: 'uint256', name: 'value', type: 'uint256' }
+		],
+		name: 'TransferSingle',
+		type: 'event'
+	},
+	{
+		inputs: [
+			{ internalType: 'address', name: 'account', type: 'address' },
+			{ internalType: 'uint256', name: 'id', type: 'uint256' }
+		],
+		name: 'balanceOf',
+		outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [
+			{ internalType: 'address', name: 'account', type: 'address' },
+			{ internalType: 'uint256', name: 'id', type: 'uint256' },
+			{ internalType: 'uint256', name: 'amount', type: 'uint256' }
+		],
+		name: 'burn',
+		outputs: [],
+		stateMutability: 'nonpayable',
+		type: 'function'
+	},
+	{
+		inputs: [],
+		name: 'credentialRegistry',
+		outputs: [{ internalType: 'address', name: '', type: 'address' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [],
+		name: 'creditOracle',
+		outputs: [{ internalType: 'address', name: '', type: 'address' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
+		name: 'getEncryptedAmount',
+		outputs: [{ internalType: 'euint128', name: '', type: 'uint256' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
+		name: 'getEncryptedDueDate',
+		outputs: [{ internalType: 'euint128', name: '', type: 'uint256' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
+		name: 'getInvoiceMeta',
+		outputs: [
+			{ internalType: 'address', name: 'submitter', type: 'address' },
+			{ internalType: 'uint256', name: 'submittedAt', type: 'uint256' },
+			{ internalType: 'bool', name: 'active', type: 'bool' }
+		],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'address', name: 'user', type: 'address' }],
+		name: 'getUserInvoices',
+		outputs: [{ internalType: 'uint256[]', name: '', type: 'uint256[]' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [
+			{ internalType: 'uint256', name: 'tokenId', type: 'uint256' },
+			{ internalType: 'address', name: 'grantee', type: 'address' }
+		],
+		name: 'grantAccess',
+		outputs: [],
+		stateMutability: 'nonpayable',
+		type: 'function'
+	},
+	{
+		inputs: [],
+		name: 'nextTokenId',
+		outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [],
+		name: 'owner',
+		outputs: [{ internalType: 'address', name: '', type: 'address' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [
+			{ internalType: 'address', name: 'from', type: 'address' },
+			{ internalType: 'address', name: 'to', type: 'address' },
+			{ internalType: 'uint256', name: 'id', type: 'uint256' },
+			{ internalType: 'uint256', name: 'amount', type: 'uint256' },
+			{ internalType: 'bytes', name: '', type: 'bytes' }
+		],
+		name: 'safeTransferFrom',
+		outputs: [],
+		stateMutability: 'nonpayable',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'address', name: '_creditOracle', type: 'address' }],
+		name: 'setCreditOracle',
+		outputs: [],
+		stateMutability: 'nonpayable',
+		type: 'function'
+	},
+	{
+		inputs: [
+			{
+				components: [
+					{ internalType: 'bytes', name: 'data', type: 'bytes' },
+					{ internalType: 'int32', name: 'securityZone', type: 'int32' }
+				],
+				internalType: 'struct InEuint128',
+				name: 'encryptedAmount',
+				type: 'tuple'
+			},
+			{
+				components: [
+					{ internalType: 'bytes', name: 'data', type: 'bytes' },
+					{ internalType: 'int32', name: 'securityZone', type: 'int32' }
+				],
+				internalType: 'struct InEuint128',
+				name: 'encryptedDueDate',
+				type: 'tuple'
+			},
+			{ internalType: 'bytes', name: 'encryptedBuyer', type: 'bytes' }
+		],
+		name: 'submitInvoice',
+		outputs: [],
+		stateMutability: 'nonpayable',
+		type: 'function'
+	},
+	{
+		inputs: [],
+		name: 'totalInvoices',
+		outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+		stateMutability: 'view',
+		type: 'function'
+	}
+] as const;
