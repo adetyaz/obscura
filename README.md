@@ -4,6 +4,12 @@
 
 ---
 
+## Walkthrough
+
+[![Obscura Walkthrough](https://img.youtube.com/vi/x5gc1-CkE2c/maxresdefault.jpg)](https://www.youtube.com/watch?v=x5gc1-CkE2c)
+
+---
+
 ## The Problem
 
 Invoice financing is a $3 trillion global market. SMEs across Lagos, Nairobi, Jakarta, and Karachi hold billions in unpaid invoices from Tier-1 corporates and government entities. Lenders have idle capital seeking real-world yield. The market mechanism is understood. The demand is proven.
@@ -113,6 +119,61 @@ Three pool tiers, one set of contracts. Differentiation is in parameters and cre
 | `InvoiceVault.sol`       | Encrypts invoice fields, mints private ERC-1155 RWA token.                   |
 | `CreditOracle.sol`       | FHE credit scoring engine. Computes risk score on encrypted inputs.          |
 | `FinancingPool.sol`      | Funding, escrow, repayment, yield settlement, default escalation.            |
+
+---
+
+## Wave 1 User Story — Step by Step
+
+### As an SME
+
+**1. Connect wallet**
+Navigate to the app. Click **CONNECT WALLET**. Approve the MetaMask connection on Base Sepolia.
+
+**2. Select role**
+Choose **SME** on the role selection screen. You are redirected to the SME portal.
+
+**3. Complete KYB onboarding**
+Click **VERIFY BUSINESS**. Enter your business name, country, and TIN/EIN. Click **SUBMIT KYB**. Approve the transaction in MetaMask — this calls `CredentialRegistry.selfVerify()` on-chain. After confirmation, you are redirected to the SME dashboard as a verified business.
+
+**4. Submit an invoice**
+Click **SUBMIT INVOICE**. Enter the invoice amount (in USDC, up to $1M) and the due date. Click **SUBMIT INVOICE**. Approve the transaction — this encrypts the invoice fields via Fhenix CoFHE and mints a private ERC-1155 token. The invoice appears in your dashboard with status **UNSCORED**.
+
+**5. Request credit scoring**
+On the invoice row, click **REQUEST SCORE**. Approve the transaction — this calls `CreditOracle.requestScore()`, which computes a risk score directly on the encrypted invoice data using FHE range checks. Status changes to **SCORING**.
+
+**6. Finalize the score**
+Once the FHE coprocessor has processed the score, click **FINALIZE SCORE**. The SDK calls `decryptForTx` to retrieve the decrypted score and a Threshold Network signature, then submits both to `CreditOracle.finalizeScore()` on-chain. Status changes to **SCORED** and the score tier (A / B / C) appears.
+
+**7. Wait for funding**
+Your invoice is now visible in the lender marketplace. Once a lender funds it, your dashboard shows status **FUNDED** and the advance amount.
+
+**8. Request settlement**
+When the invoice is due, navigate to the invoice repay page and click **REQUEST SETTLEMENT**. This calls `FinancingPool.requestSettlement()`, triggering FHE computation of the repay amount.
+
+**9. Finalize settlement**
+Click **FINALIZE AMOUNT**. The SDK decrypts the repay amount via `decryptForTx` and submits it to `FinancingPool.finalizeSettlement()`. The exact amount you owe is now visible on-chain.
+
+**10. Repay**
+Click **REPAY**. Send the ETH repayment. The lender receives their principal plus financing fee. Invoice status changes to **SETTLED**.
+
+---
+
+### As a Lender
+
+**1. Connect wallet**
+Connect MetaMask on Base Sepolia. Select **LENDER** role.
+
+**2. Browse the marketplace**
+The Invoice Marketplace shows all scored, unfunded invoices. Filter by tier (A / B / C) or tenor. Invoice amounts are FHE-encrypted and not visible — only the risk score and tier are shown.
+
+**3. Fund an invoice**
+Click an invoice card, review the score and advance terms, and click **FUND INVOICE**. Approve the transaction — this calls `FinancingPool.fundInvoice()` and locks your capital. A transaction link to the explorer is shown.
+
+**4. Monitor your portfolio**
+Your funded positions appear in the portfolio panel on the right with status, tenor, advance rate, and settlement state.
+
+**5. Receive repayment**
+When the SME repays, the contract auto-settles and your principal plus financing fee is returned.
 
 ---
 

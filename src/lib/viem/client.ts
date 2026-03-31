@@ -17,8 +17,9 @@ export function getWalletClient() {
 }
 
 // Lazy — browser-only, avoids SSR crash from iframe-shared-storage
-let _cofheClient: Awaited<ReturnType<typeof import('@cofhe/sdk/web')['createCofheClient']>> | null =
-	null;
+let _cofheClient: Awaited<
+	ReturnType<(typeof import('@cofhe/sdk/web'))['createCofheClient']>
+> | null = null;
 
 export async function getCofheClient() {
 	if (typeof window === 'undefined') throw new Error('CofheClient is browser-only');

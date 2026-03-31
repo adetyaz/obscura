@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
 	import { wallet } from '$lib/stores/wallet.svelte';
 	import { smeStore } from '$lib/stores/sme.svelte';
 	import { goto } from '$app/navigation';
@@ -18,6 +19,10 @@
 		if (wallet.isConnected && wallet.isVerified && wallet.address) {
 			smeStore.loadInvoices(wallet.address);
 		}
+	});
+
+	onMount(() => {
+		if (wallet.address) smeStore.loadInvoices(wallet.address);
 	});
 
 	const invoice = $derived(smeStore.invoices.find((i) => i.tokenId === tokenId) ?? null);
@@ -66,9 +71,7 @@
 		step = 'Finalizing settlement amount…';
 		error = '';
 		try {
-			// Wave 1 mock: pass repayAmount (or 0) and empty signature
-			const repay = invoice.repayAmount ?? 0n;
-			const hash = await smeStore.finalizeSettlement(invoice.tokenId, repay, '0x');
+			const hash = await smeStore.finalizeSettlement(invoice.tokenId);
 			lastTxHash = hash;
 			if (wallet.address) await smeStore.loadInvoices(wallet.address);
 		} catch (e: unknown) {

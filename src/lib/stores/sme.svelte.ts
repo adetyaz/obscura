@@ -1,4 +1,5 @@
 import { getWalletClient, publicClient, getCofheClient } from '$lib/viem/client';
+import { initFhe } from '$lib/fhe/client';
 import { InvoiceVaultABI } from '$lib/contracts/abis/InvoiceVault';
 import { CreditOracleABI } from '$lib/contracts/abis/CreditOracle';
 import { financingPoolAbi } from '$lib/contracts/abis/FinancingPool';
@@ -175,6 +176,7 @@ async function requestScore(tokenId: bigint): Promise<`0x${string}`> {
 async function finalizeScore(tokenId: bigint): Promise<`0x${string}`> {
 	const walletClient = getWalletClient();
 	const [account] = await walletClient.getAddresses();
+	await initFhe();
 	const cofheClient = await getCofheClient();
 
 	// Fetch the ciphertext handle from the contract
@@ -217,22 +219,30 @@ async function requestSettlement(tokenId: bigint): Promise<`0x${string}`> {
 	return hash;
 }
 
-async function finalizeSettlement(
-	tokenId: bigint,
-	decryptedRepay: bigint,
-	signature: `0x${string}`
-): Promise<`0x${string}`> {
+async function finalizeSettlement(tokenId: bigint): Promise<`0x${string}`> {
 	const walletClient = getWalletClient();
 	const [account] = await walletClient.getAddresses();
+	await initFhe();
+	const cofheClient = await getCofheClient();
 
-	const hash = await walletClient.writeContract({
+	const ctHash = await publicClient.readContract({
+		address: ADDRESSES.FinancingPool,
+		abi: financingPoolAbi,
+		functionName: 'getEncryptedRepay',
+		args: [tokenId]
+	});
+
+	const result = await cofheClient.decryptForTx(ctHash).withoutPermit().execute();
+
+	const { request } = await publicClient.simulateContract({
 		address: ADDRESSES.FinancingPool,
 		abi: financingPoolAbi,
 		functionName: 'finalizeSettlement',
-		args: [tokenId, decryptedRepay, signature],
+		args: [tokenId, result.decryptedValue as bigint, result.signature as `0x${string}`],
 		account
 	});
 
+	const hash = await walletClient.writeContract(request);
 	await publicClient.waitForTransactionReceipt({ hash });
 	return hash;
 }

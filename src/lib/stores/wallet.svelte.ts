@@ -80,6 +80,11 @@ async function checkVerified() {
 	localStorage.setItem(LS_VERIFIED, String(result));
 }
 
+function setVerified(value: boolean) {
+	isVerified = value;
+	localStorage.setItem(LS_VERIFIED, String(value));
+}
+
 function setRole(newRole: 'sme' | 'lender') {
 	role = newRole;
 	localStorage.setItem(LS_ROLE, newRole);
@@ -107,6 +112,7 @@ export const wallet = {
 	connect,
 	disconnect,
 	checkVerified,
+	setVerified,
 	setRole,
 	restore
 };

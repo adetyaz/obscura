@@ -74,7 +74,6 @@
 			txHash = hash;
 			await wallet.checkVerified();
 			submitted = true;
-			await goto(resolve('/sme'));
 		} catch (e: unknown) {
 			const msg = e instanceof Error ? e.message : 'Transaction failed';
 			if (msg.includes('caller is not the owner')) {
