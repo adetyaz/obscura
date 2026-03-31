@@ -11,6 +11,11 @@ export default defineConfig({
 		exclude: ['@cofhe/sdk', '@cofhe/sdk/web', '@cofhe/sdk/chains', '@cofhe/sdk/adapters'],
 		include: ['iframe-shared-storage']
 	},
+	build: {
+		rollupOptions: {
+			external: ['@cofhe/sdk/web']
+		}
+	},
 	test: {
 		expect: { requireAssertions: true },
 		projects: [
