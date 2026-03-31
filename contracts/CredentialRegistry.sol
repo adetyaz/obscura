@@ -35,6 +35,12 @@ contract CredentialRegistry {
         emit VerificationUpdated(wallet, status);
     }
 
+    /// @notice Wave 1 mock KYB — any wallet can self-verify for testing / preseed
+    function selfVerify() external {
+        verified[msg.sender] = true;
+        emit VerificationUpdated(msg.sender, true);
+    }
+
     /// @notice Store an encrypted credential (for future use with Privara)
     /// @param encryptedCredential The encrypted credential data from cofhejs
     function storeCredential(InEuint128 calldata encryptedCredential) external {

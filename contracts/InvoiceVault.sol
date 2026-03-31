@@ -18,6 +18,7 @@ contract InvoiceVault {
     ICredentialRegistry public immutable credentialRegistry;
     address public owner;
     address public creditOracle;
+    address public financingPool;
 
     uint256 public nextTokenId = 1;
 
@@ -56,6 +57,7 @@ contract InvoiceVault {
         uint256 value
     );
     event CreditOracleUpdated(address indexed oracle);
+    event FinancingPoolUpdated(address indexed pool);
 
     // ──────────────────────────────────────────────
     // Modifiers
@@ -93,6 +95,13 @@ contract InvoiceVault {
         require(_creditOracle != address(0), "InvoiceVault: zero address");
         creditOracle = _creditOracle;
         emit CreditOracleUpdated(_creditOracle);
+    }
+
+    /// @notice Set the FinancingPool address (called after FinancingPool is deployed)
+    function setFinancingPool(address _financingPool) external onlyOwner {
+        require(_financingPool != address(0), "InvoiceVault: zero address");
+        financingPool = _financingPool;
+        emit FinancingPoolUpdated(_financingPool);
     }
 
     // ──────────────────────────────────────────────
@@ -137,6 +146,12 @@ contract InvoiceVault {
         if (creditOracle != address(0)) {
             FHE.allow(amount, creditOracle);
             FHE.allow(dueDate, creditOracle);
+        }
+
+        // Grant FinancingPool access to compute advance/fee amounts
+        if (financingPool != address(0)) {
+            FHE.allow(amount, financingPool);
+            FHE.allow(dueDate, financingPool);
         }
 
         // Mint ERC-1155 token (1 unit per invoice)
@@ -197,7 +212,7 @@ contract InvoiceVault {
         bytes calldata
     ) external {
         require(
-            msg.sender == from || msg.sender == owner,
+            msg.sender == from || msg.sender == owner || msg.sender == financingPool,
             "InvoiceVault: not authorized"
         );
         require(_balances[id][from] >= amount, "InvoiceVault: insufficient balance");
@@ -211,7 +226,7 @@ contract InvoiceVault {
     /// @notice Burn token (called on settlement)
     function burn(address account, uint256 id, uint256 amount) external {
         require(
-            msg.sender == account || msg.sender == owner,
+            msg.sender == account || msg.sender == owner || msg.sender == financingPool,
             "InvoiceVault: not authorized"
         );
         require(_balances[id][account] >= amount, "InvoiceVault: insufficient balance");

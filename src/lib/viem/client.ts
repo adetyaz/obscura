@@ -1,19 +1,9 @@
-import { createPublicClient, createWalletClient, custom, defineChain, http } from 'viem';
-
-export const fhenixHelium = defineChain({
-	id: 8008135,
-	name: 'Fhenix Helium',
-	nativeCurrency: { name: 'tFHE', symbol: 'tFHE', decimals: 18 },
-	rpcUrls: { default: { http: ['https://api.helium.fhenix.zone'] } },
-	blockExplorers: {
-		default: { name: 'Explorer', url: 'https://explorer.helium.fhenix.zone' }
-	},
-	testnet: true
-});
+import { createPublicClient, createWalletClient, custom, http } from 'viem';
+import { baseSepolia } from 'viem/chains';
 
 export const publicClient = createPublicClient({
-	chain: fhenixHelium,
-	transport: http('https://api.helium.fhenix.zone')
+	chain: baseSepolia,
+	transport: http('https://sepolia.base.org')
 });
 
 export function getWalletClient() {
@@ -21,7 +11,21 @@ export function getWalletClient() {
 		throw new Error('MetaMask not found');
 	}
 	return createWalletClient({
-		chain: fhenixHelium,
+		chain: baseSepolia,
 		transport: custom(window.ethereum)
 	});
+}
+
+// Lazy — browser-only, avoids SSR crash from iframe-shared-storage
+let _cofheClient: Awaited<ReturnType<typeof import('@cofhe/sdk/web')['createCofheClient']>> | null =
+	null;
+
+export async function getCofheClient() {
+	if (typeof window === 'undefined') throw new Error('CofheClient is browser-only');
+	if (_cofheClient) return _cofheClient;
+	const { createCofheConfig, createCofheClient } = await import('@cofhe/sdk/web');
+	const { chains } = await import('@cofhe/sdk/chains');
+	const config = createCofheConfig({ supportedChains: [chains.baseSepolia] });
+	_cofheClient = createCofheClient(config);
+	return _cofheClient;
 }

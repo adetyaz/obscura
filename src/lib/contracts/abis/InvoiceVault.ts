@@ -5,9 +5,23 @@ export const InvoiceVaultABI = [
 		type: 'constructor'
 	},
 	{
+		inputs: [
+			{ internalType: 'uint8', name: 'got', type: 'uint8' },
+			{ internalType: 'uint8', name: 'expected', type: 'uint8' }
+		],
+		name: 'InvalidEncryptedInput',
+		type: 'error'
+	},
+	{
 		anonymous: false,
 		inputs: [{ indexed: true, internalType: 'address', name: 'oracle', type: 'address' }],
 		name: 'CreditOracleUpdated',
+		type: 'event'
+	},
+	{
+		anonymous: false,
+		inputs: [{ indexed: true, internalType: 'address', name: 'pool', type: 'address' }],
+		name: 'FinancingPoolUpdated',
 		type: 'event'
 	},
 	{
@@ -55,7 +69,7 @@ export const InvoiceVaultABI = [
 	{
 		inputs: [],
 		name: 'credentialRegistry',
-		outputs: [{ internalType: 'address', name: '', type: 'address' }],
+		outputs: [{ internalType: 'contract ICredentialRegistry', name: '', type: 'address' }],
 		stateMutability: 'view',
 		type: 'function'
 	},
@@ -67,16 +81,23 @@ export const InvoiceVaultABI = [
 		type: 'function'
 	},
 	{
+		inputs: [],
+		name: 'financingPool',
+		outputs: [{ internalType: 'address', name: '', type: 'address' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
 		inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
 		name: 'getEncryptedAmount',
-		outputs: [{ internalType: 'euint128', name: '', type: 'uint256' }],
+		outputs: [{ internalType: 'euint128', name: '', type: 'bytes32' }],
 		stateMutability: 'view',
 		type: 'function'
 	},
 	{
 		inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
 		name: 'getEncryptedDueDate',
-		outputs: [{ internalType: 'euint128', name: '', type: 'uint256' }],
+		outputs: [{ internalType: 'euint128', name: '', type: 'bytes32' }],
 		stateMutability: 'view',
 		type: 'function'
 	},
@@ -143,11 +164,20 @@ export const InvoiceVaultABI = [
 		type: 'function'
 	},
 	{
+		inputs: [{ internalType: 'address', name: '_financingPool', type: 'address' }],
+		name: 'setFinancingPool',
+		outputs: [],
+		stateMutability: 'nonpayable',
+		type: 'function'
+	},
+	{
 		inputs: [
 			{
 				components: [
-					{ internalType: 'bytes', name: 'data', type: 'bytes' },
-					{ internalType: 'int32', name: 'securityZone', type: 'int32' }
+					{ internalType: 'uint256', name: 'ctHash', type: 'uint256' },
+					{ internalType: 'uint8', name: 'securityZone', type: 'uint8' },
+					{ internalType: 'uint8', name: 'utype', type: 'uint8' },
+					{ internalType: 'bytes', name: 'signature', type: 'bytes' }
 				],
 				internalType: 'struct InEuint128',
 				name: 'encryptedAmount',
@@ -155,8 +185,10 @@ export const InvoiceVaultABI = [
 			},
 			{
 				components: [
-					{ internalType: 'bytes', name: 'data', type: 'bytes' },
-					{ internalType: 'int32', name: 'securityZone', type: 'int32' }
+					{ internalType: 'uint256', name: 'ctHash', type: 'uint256' },
+					{ internalType: 'uint8', name: 'securityZone', type: 'uint8' },
+					{ internalType: 'uint8', name: 'utype', type: 'uint8' },
+					{ internalType: 'bytes', name: 'signature', type: 'bytes' }
 				],
 				internalType: 'struct InEuint128',
 				name: 'encryptedDueDate',

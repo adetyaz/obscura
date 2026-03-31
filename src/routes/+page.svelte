@@ -1,86 +1,170 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { wallet } from '$lib/stores/wallet.svelte';
 
-	function selectRole(role: 'sme' | 'lender') {
-		wallet.setRole(role);
-		goto(`/${role}`);
+	const stats = [
+		{ label: 'TVL', value: '$492M' },
+		{ label: 'ACTIVE LOANS', value: '1,249' },
+		{ label: 'ZKP VALIDITY', value: '100%' },
+		{ label: 'AVG YIELD', value: '8.42% APY' }
+	];
+
+	const smeFeatures = [
+		{
+			num: '01',
+			title: 'ZK Credit Scores',
+			body: 'Your creditworthiness proven on-chain without revealing raw financials. Encrypted by Fhenix CoFHE.'
+		},
+		{
+			num: '02',
+			title: 'Encrypted Collateral',
+			body: 'Invoice amounts, buyer identities, and due dates remain ciphertext throughout the financing lifecycle.'
+		},
+		{
+			num: '03',
+			title: 'Non-Custodial Escrow',
+			body: 'ERC-1155 invoice tokens locked in protocol-governed escrow. No intermediary holds your assets.'
+		}
+	];
+
+	const lenderFeatures = [
+		{
+			letter: 'A',
+			title: 'Verified RWA',
+			body: 'Every invoice is anchored to on-chain credential proofs via Privara. Real commercial paper, cryptographically attested.'
+		},
+		{
+			letter: 'B',
+			title: 'KYC/AML Pools',
+			body: 'Lender addresses screened against sanctions lists before position entry. Compliance without data leakage.'
+		},
+		{
+			letter: 'C',
+			title: 'Auto Default Protection',
+			body: 'Smart contract enforces repayment schedules. Collateral released on settlement, liquidated on default.'
+		}
+	];
+
+	async function handleConnect() {
+		await wallet.connect();
 	}
 </script>
 
-<div class="mx-auto max-w-6xl px-6">
+<div class="min-h-screen bg-paper">
 	<!-- Hero -->
-	<section class="border-b border-border py-24">
-		<p class="mb-4 font-mono text-xs tracking-widest text-muted">01 — PROTOCOL</p>
-		<h1 class="mb-6 max-w-2xl font-display text-5xl leading-tight text-ink">
-			Private credit infrastructure for SME invoices
-		</h1>
-		<p class="max-w-lg font-body text-lg leading-relaxed text-muted">
-			Tokenize unpaid invoices as encrypted real-world assets. Finance them without exposing
-			underlying data. Everything runs through FHE — no plaintext ever hits the chain.
-		</p>
+	<section class="border-b border-border px-8 py-24">
+		<div class="mx-auto max-w-6xl">
+			<p class="mb-6 font-mono text-[10px] tracking-widest text-muted">
+				OBSCURA PROTOCOL · FHENIX COFHE · WAVE 1
+			</p>
+			<h1 class="mb-8 max-w-3xl font-display text-6xl leading-none text-ink">
+				Privacy is the New Provenance
+			</h1>
+			<p class="mb-10 max-w-xl text-lg leading-relaxed text-muted">
+				Encrypted invoice financing for SMEs. Verified real-world assets for lenders. No plaintext
+				ever touches the chain.
+			</p>
+			<div class="flex items-center gap-4">
+				{#if wallet.isConnected}
+					<a
+						href={resolve('/select')}
+						class="border border-ink bg-ink px-8 py-4 font-mono text-xs tracking-widest text-paper hover:bg-ink/90"
+					>
+						ENTER PROTOCOL →
+					</a>
+					<span class="font-mono text-[10px] tracking-widest text-teal">● CONNECTED</span>
+				{:else}
+					<button
+						onclick={handleConnect}
+						disabled={wallet.isConnecting}
+						class="border border-ink bg-ink px-8 py-4 font-mono text-xs tracking-widest text-paper hover:bg-ink/90 disabled:opacity-50"
+					>
+						{wallet.isConnecting ? 'CONNECTING…' : 'CONNECT WALLET'}
+					</button>
+					<span class="font-mono text-[10px] tracking-widest text-muted">
+						THEN SELECT YOUR ROLE
+					</span>
+				{/if}
+			</div>
+		</div>
 	</section>
 
-	<!-- Role Selection -->
-	<section class="py-16">
-		<p class="mb-8 font-mono text-xs tracking-widest text-muted">02 — SELECT ROLE</p>
-
-		{#if !wallet.isConnected}
-			<div class="border border-border p-8">
-				<p class="mb-4 font-body text-muted">Connect your wallet to get started.</p>
-				<button
-					onclick={wallet.connect}
-					disabled={wallet.isConnecting}
-					class="border border-ink bg-ink px-6 py-3 font-mono text-xs tracking-wide text-paper transition-colors hover:bg-transparent hover:text-ink disabled:opacity-50"
-				>
-					{wallet.isConnecting ? 'CONNECTING…' : 'CONNECT WALLET'}
-				</button>
+	<!-- Stats ticker -->
+	<section class="border-b border-border bg-ink px-8">
+		<div class="mx-auto max-w-6xl">
+			<div class="flex divide-x divide-ink/30">
+				{#each stats as stat (stat.label)}
+					<div class="flex-1 px-6 py-5">
+						<p class="font-mono text-[10px] tracking-widest text-paper/50">{stat.label}</p>
+						<p class="mt-1 font-display text-2xl text-paper">{stat.value}</p>
+					</div>
+				{/each}
 			</div>
-		{:else}
-			<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-				<!-- SME Card -->
-				<button
-					onclick={() => selectRole('sme')}
-					class="group border border-border p-8 text-left transition-colors hover:border-ink"
-				>
-					<p class="mb-2 font-mono text-xs tracking-widest text-muted">BORROWER</p>
-					<h2 class="mb-3 font-display text-2xl text-ink">SME Dashboard</h2>
-					<p class="mb-6 text-sm leading-relaxed text-muted">
-						Submit invoices, get them encrypted and scored, receive USDC advances against your
-						receivables.
-					</p>
-					<span
-						class="inline-block border-b border-ink pb-0.5 font-mono text-xs tracking-wide text-ink transition-colors group-hover:border-accent group-hover:text-accent"
-					>
-						ENTER →
-					</span>
-				</button>
+		</div>
+	</section>
 
-				<!-- Lender Card -->
-				<button
-					onclick={() => selectRole('lender')}
-					class="group border border-border p-8 text-left transition-colors hover:border-ink"
-				>
-					<p class="mb-2 font-mono text-xs tracking-widest text-muted">INVESTOR</p>
-					<h2 class="mb-3 font-display text-2xl text-ink">Lender Dashboard</h2>
-					<p class="mb-6 text-sm leading-relaxed text-muted">
-						Browse risk-scored invoices, fund positions, earn yield — without ever seeing the
-						underlying data.
+	<!-- For SMEs -->
+	<section class="border-b border-border px-8 py-20">
+		<div class="mx-auto max-w-6xl">
+			<div class="mb-12 grid grid-cols-2 gap-8">
+				<div>
+					<p class="mb-3 font-mono text-[10px] tracking-widest text-muted">FOR SME ORIGINATORS</p>
+					<h2 class="font-display text-4xl text-ink">
+						Finance your receivables.<br />Keep them private.
+					</h2>
+				</div>
+				<div class="flex items-end">
+					<p class="text-muted">
+						Submit invoices, receive encrypted credit scores, get USDC advances — without exposing
+						counterparty data to anyone on the network.
 					</p>
-					<span
-						class="inline-block border-b border-ink pb-0.5 font-mono text-xs tracking-wide text-ink transition-colors group-hover:border-accent group-hover:text-accent"
-					>
-						ENTER →
-					</span>
-				</button>
+				</div>
 			</div>
-		{/if}
+			<div class="grid grid-cols-3 gap-6">
+				{#each smeFeatures as feat (feat.num)}
+					<div class="border border-border p-6">
+						<p class="mb-4 font-mono text-[10px] tracking-widest text-muted">{feat.num}</p>
+						<h3 class="mb-3 font-display text-xl text-ink">{feat.title}</h3>
+						<p class="text-sm leading-relaxed text-muted">{feat.body}</p>
+					</div>
+				{/each}
+			</div>
+		</div>
+	</section>
+
+	<!-- For Lenders -->
+	<section class="border-b border-border px-8 py-20">
+		<div class="mx-auto max-w-6xl">
+			<div class="mb-12 grid grid-cols-2 gap-8">
+				<div>
+					<p class="mb-3 font-mono text-[10px] tracking-widest text-muted">
+						FOR INSTITUTIONAL LENDERS
+					</p>
+					<h2 class="font-display text-4xl text-ink">Verified RWA.<br />Compliant yield.</h2>
+				</div>
+				<div class="flex items-end">
+					<p class="text-muted">
+						Browse risk-scored invoices on the marketplace, fund positions, and earn structured
+						yield — all without seeing raw invoice data.
+					</p>
+				</div>
+			</div>
+			<div class="grid grid-cols-3 gap-6">
+				{#each lenderFeatures as feat (feat.letter)}
+					<div class="border border-border p-6">
+						<p class="mb-4 font-mono text-[10px] tracking-widest text-muted">[{feat.letter}]</p>
+						<h3 class="mb-3 font-display text-xl text-ink">{feat.title}</h3>
+						<p class="text-sm leading-relaxed text-muted">{feat.body}</p>
+					</div>
+				{/each}
+			</div>
+		</div>
 	</section>
 
 	<!-- Footer -->
-	<footer class="border-t border-border py-8">
-		<p class="font-mono text-[10px] tracking-widest text-muted">
-			OBSCURA PROTOCOL · WAVE 1 · BASE SEPOLIA · FHENIX COFHE
-		</p>
+	<footer class="border-t border-border px-8 py-8">
+		<div class="mx-auto max-w-6xl">
+			<p class="font-mono text-[10px] tracking-widest text-muted">OBSCURA PROTOCOL · 2026</p>
+		</div>
 	</footer>
 </div>

@@ -1,196 +1,214 @@
 export const financingPoolAbi = [
-	// ── Constructor ──
 	{
-		type: 'constructor',
 		inputs: [
-			{ name: '_invoiceVault', type: 'address', internalType: 'address' },
-			{ name: '_creditOracle', type: 'address', internalType: 'address' }
+			{ internalType: 'address', name: '_invoiceVault', type: 'address' },
+			{ internalType: 'address', name: '_creditOracle', type: 'address' }
 		],
-		stateMutability: 'nonpayable'
+		stateMutability: 'nonpayable',
+		type: 'constructor'
 	},
-
-	// ── Events ──
 	{
-		type: 'event',
+		inputs: [{ internalType: 'int32', name: 'value', type: 'int32' }],
+		name: 'SecurityZoneOutOfBounds',
+		type: 'error'
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{ indexed: true, internalType: 'uint256', name: 'tokenId', type: 'uint256' },
+			{ indexed: true, internalType: 'address', name: 'lender', type: 'address' },
+			{ indexed: true, internalType: 'address', name: 'smeAddress', type: 'address' },
+			{ indexed: false, internalType: 'uint16', name: 'advanceRateBps', type: 'uint16' },
+			{ indexed: false, internalType: 'uint16', name: 'discountRateBps', type: 'uint16' }
+		],
 		name: 'InvoiceFunded',
-		inputs: [
-			{ name: 'tokenId', type: 'uint256', indexed: true, internalType: 'uint256' },
-			{ name: 'lender', type: 'address', indexed: true, internalType: 'address' },
-			{ name: 'smeAddress', type: 'address', indexed: true, internalType: 'address' },
-			{ name: 'advanceRateBps', type: 'uint16', indexed: false, internalType: 'uint16' },
-			{ name: 'discountRateBps', type: 'uint16', indexed: false, internalType: 'uint16' }
-		],
-		anonymous: false
+		type: 'event'
 	},
 	{
-		type: 'event',
-		name: 'RepaymentReceived',
+		anonymous: false,
 		inputs: [
-			{ name: 'tokenId', type: 'uint256', indexed: true, internalType: 'uint256' },
-			{ name: 'sme', type: 'address', indexed: true, internalType: 'address' },
-			{ name: 'amount', type: 'uint256', indexed: false, internalType: 'uint256' }
+			{ indexed: true, internalType: 'uint256', name: 'tokenId', type: 'uint256' },
+			{ indexed: true, internalType: 'address', name: 'lender', type: 'address' },
+			{ indexed: true, internalType: 'address', name: 'sme', type: 'address' }
 		],
-		anonymous: false
-	},
-	{
-		type: 'event',
 		name: 'PositionSettled',
+		type: 'event'
+	},
+	{
+		anonymous: false,
 		inputs: [
-			{ name: 'tokenId', type: 'uint256', indexed: true, internalType: 'uint256' },
-			{ name: 'lender', type: 'address', indexed: true, internalType: 'address' },
-			{ name: 'sme', type: 'address', indexed: true, internalType: 'address' }
+			{ indexed: true, internalType: 'uint256', name: 'tokenId', type: 'uint256' },
+			{ indexed: true, internalType: 'address', name: 'sme', type: 'address' },
+			{ indexed: false, internalType: 'uint256', name: 'amount', type: 'uint256' }
 		],
-		anonymous: false
+		name: 'RepaymentReceived',
+		type: 'event'
 	},
-
-	// ── Read functions ──
 	{
-		type: 'function',
-		name: 'owner',
 		inputs: [],
-		outputs: [{ name: '', type: 'address', internalType: 'address' }],
-		stateMutability: 'view'
-	},
-	{
-		type: 'function',
-		name: 'invoiceVault',
-		inputs: [],
-		outputs: [{ name: '', type: 'address', internalType: 'contract IInvoiceVaultFP' }],
-		stateMutability: 'view'
-	},
-	{
-		type: 'function',
-		name: 'creditOracle',
-		inputs: [],
-		outputs: [{ name: '', type: 'address', internalType: 'contract ICreditOracle' }],
-		stateMutability: 'view'
-	},
-	{
-		type: 'function',
 		name: 'BPS',
+		outputs: [{ internalType: 'uint128', name: '', type: 'uint128' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
 		inputs: [],
-		outputs: [{ name: '', type: 'uint128', internalType: 'uint128' }],
-		stateMutability: 'view'
+		name: 'creditOracle',
+		outputs: [{ internalType: 'contract ICreditOracle', name: '', type: 'address' }],
+		stateMutability: 'view',
+		type: 'function'
 	},
 	{
-		type: 'function',
-		name: 'isFunded',
-		inputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
-		outputs: [{ name: '', type: 'bool', internalType: 'bool' }],
-		stateMutability: 'view'
-	},
-	{
-		type: 'function',
-		name: 'settlementRequested',
-		inputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
-		outputs: [{ name: '', type: 'bool', internalType: 'bool' }],
-		stateMutability: 'view'
-	},
-	{
-		type: 'function',
-		name: 'settlementReady',
-		inputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
-		outputs: [{ name: '', type: 'bool', internalType: 'bool' }],
-		stateMutability: 'view'
-	},
-	{
-		type: 'function',
-		name: 'repayAmountPlain',
-		inputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
-		outputs: [{ name: '', type: 'uint128', internalType: 'uint128' }],
-		stateMutability: 'view'
-	},
-	{
-		type: 'function',
-		name: 'getPositionMeta',
-		inputs: [{ name: 'tokenId', type: 'uint256', internalType: 'uint256' }],
-		outputs: [
-			{ name: 'lender', type: 'address', internalType: 'address' },
-			{ name: 'sme', type: 'address', internalType: 'address' },
-			{ name: 'advanceRateBps', type: 'uint16', internalType: 'uint16' },
-			{ name: 'discountRateBps', type: 'uint16', internalType: 'uint16' },
-			{ name: 'fundedAt', type: 'uint256', internalType: 'uint256' },
-			{ name: 'settled', type: 'bool', internalType: 'bool' }
-		],
-		stateMutability: 'view'
-	},
-	{
-		type: 'function',
-		name: 'getLenderPositions',
-		inputs: [{ name: 'lender', type: 'address', internalType: 'address' }],
-		outputs: [{ name: '', type: 'uint256[]', internalType: 'uint256[]' }],
-		stateMutability: 'view'
-	},
-	{
-		type: 'function',
-		name: 'getEncryptedAdvance',
-		inputs: [{ name: 'tokenId', type: 'uint256', internalType: 'uint256' }],
-		outputs: [{ name: '', type: 'uint256', internalType: 'euint128' }],
-		stateMutability: 'view'
-	},
-	{
-		type: 'function',
-		name: 'getEncryptedFee',
-		inputs: [{ name: 'tokenId', type: 'uint256', internalType: 'uint256' }],
-		outputs: [{ name: '', type: 'uint256', internalType: 'euint128' }],
-		stateMutability: 'view'
-	},
-	{
-		type: 'function',
-		name: 'getEncryptedRepay',
-		inputs: [{ name: 'tokenId', type: 'uint256', internalType: 'uint256' }],
-		outputs: [{ name: '', type: 'uint256', internalType: 'euint128' }],
-		stateMutability: 'view'
-	},
-	{
-		type: 'function',
-		name: 'getRepayAmount',
-		inputs: [{ name: 'tokenId', type: 'uint256', internalType: 'uint256' }],
-		outputs: [{ name: '', type: 'uint128', internalType: 'uint128' }],
-		stateMutability: 'view'
-	},
-
-	// ── Write functions ──
-	{
-		type: 'function',
-		name: 'fundInvoice',
 		inputs: [
-			{ name: 'tokenId', type: 'uint256', internalType: 'uint256' },
-			{ name: 'advanceRateBps', type: 'uint16', internalType: 'uint16' },
-			{ name: 'discountRateBps', type: 'uint16', internalType: 'uint16' }
+			{ internalType: 'uint256', name: 'tokenId', type: 'uint256' },
+			{ internalType: 'uint128', name: '_decryptedRepay', type: 'uint128' },
+			{ internalType: 'bytes', name: '_signature', type: 'bytes' }
 		],
-		outputs: [],
-		stateMutability: 'nonpayable'
-	},
-	{
-		type: 'function',
-		name: 'requestSettlement',
-		inputs: [{ name: 'tokenId', type: 'uint256', internalType: 'uint256' }],
-		outputs: [],
-		stateMutability: 'nonpayable'
-	},
-	{
-		type: 'function',
 		name: 'finalizeSettlement',
-		inputs: [{ name: 'tokenId', type: 'uint256', internalType: 'uint256' }],
 		outputs: [],
-		stateMutability: 'nonpayable'
+		stateMutability: 'nonpayable',
+		type: 'function'
 	},
 	{
-		type: 'function',
+		inputs: [
+			{ internalType: 'uint256', name: 'tokenId', type: 'uint256' },
+			{ internalType: 'uint16', name: 'advanceRateBps', type: 'uint16' },
+			{ internalType: 'uint16', name: 'discountRateBps', type: 'uint16' }
+		],
+		name: 'fundInvoice',
+		outputs: [],
+		stateMutability: 'nonpayable',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
+		name: 'getEncryptedAdvance',
+		outputs: [{ internalType: 'euint128', name: '', type: 'bytes32' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
+		name: 'getEncryptedFee',
+		outputs: [{ internalType: 'euint128', name: '', type: 'bytes32' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
+		name: 'getEncryptedRepay',
+		outputs: [{ internalType: 'euint128', name: '', type: 'bytes32' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'address', name: 'lender', type: 'address' }],
+		name: 'getLenderPositions',
+		outputs: [{ internalType: 'uint256[]', name: '', type: 'uint256[]' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
+		name: 'getPositionMeta',
+		outputs: [
+			{ internalType: 'address', name: 'lender', type: 'address' },
+			{ internalType: 'address', name: 'sme', type: 'address' },
+			{ internalType: 'uint16', name: 'advanceRateBps', type: 'uint16' },
+			{ internalType: 'uint16', name: 'discountRateBps', type: 'uint16' },
+			{ internalType: 'uint256', name: 'fundedAt', type: 'uint256' },
+			{ internalType: 'bool', name: 'settled', type: 'bool' }
+		],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
+		name: 'getRepayAmount',
+		outputs: [{ internalType: 'uint128', name: '', type: 'uint128' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [],
+		name: 'invoiceVault',
+		outputs: [{ internalType: 'contract IInvoiceVaultFP', name: '', type: 'address' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+		name: 'isFunded',
+		outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [],
+		name: 'owner',
+		outputs: [{ internalType: 'address', name: '', type: 'address' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+		name: 'positions',
+		outputs: [
+			{ internalType: 'uint256', name: 'tokenId', type: 'uint256' },
+			{ internalType: 'address', name: 'lender', type: 'address' },
+			{ internalType: 'address', name: 'sme', type: 'address' },
+			{ internalType: 'uint16', name: 'advanceRateBps', type: 'uint16' },
+			{ internalType: 'uint16', name: 'discountRateBps', type: 'uint16' },
+			{ internalType: 'uint256', name: 'fundedAt', type: 'uint256' },
+			{ internalType: 'bool', name: 'settled', type: 'bool' },
+			{ internalType: 'euint128', name: 'encAdvanceAmount', type: 'bytes32' },
+			{ internalType: 'euint128', name: 'encFeeAmount', type: 'bytes32' },
+			{ internalType: 'euint128', name: 'encRepayAmount', type: 'bytes32' }
+		],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
 		name: 'repay',
-		inputs: [{ name: 'tokenId', type: 'uint256', internalType: 'uint256' }],
 		outputs: [],
-		stateMutability: 'payable'
+		stateMutability: 'payable',
+		type: 'function'
 	},
 	{
-		type: 'function',
-		name: 'transferOwnership',
-		inputs: [{ name: 'newOwner', type: 'address', internalType: 'address' }],
-		outputs: [],
-		stateMutability: 'nonpayable'
+		inputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+		name: 'repayAmountPlain',
+		outputs: [{ internalType: 'uint128', name: '', type: 'uint128' }],
+		stateMutability: 'view',
+		type: 'function'
 	},
-
-	// ── Receive ──
-	{ type: 'receive', stateMutability: 'payable' }
+	{
+		inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
+		name: 'requestSettlement',
+		outputs: [],
+		stateMutability: 'nonpayable',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+		name: 'settlementReady',
+		outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+		name: 'settlementRequested',
+		outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'address', name: 'newOwner', type: 'address' }],
+		name: 'transferOwnership',
+		outputs: [],
+		stateMutability: 'nonpayable',
+		type: 'function'
+	},
+	{ stateMutability: 'payable', type: 'receive' }
 ] as const;

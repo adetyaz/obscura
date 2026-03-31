@@ -1,38 +1,24 @@
-import { cofhejs, Encryptable, type Permission } from 'cofhejs/web';
-import { publicClient, getWalletClient } from '$lib/viem/client';
+import { Encryptable } from '@cofhe/sdk';
+import { publicClient, getWalletClient, getCofheClient } from '$lib/viem/client';
 
-let initialized = false;
+export type InEuint128Arg = {
+	ctHash: bigint;
+	securityZone: number;
+	utype: number;
+	signature: `0x${string}`;
+};
 
 export async function initFhe() {
-	if (initialized) return;
-
 	const walletClient = getWalletClient();
-	const result = await cofhejs.initializeWithViem({
-		viemClient: publicClient,
-		viemWalletClient: walletClient
-	});
-
-	if (!result.success) {
-		throw new Error(`FHE init failed: ${result.error}`);
-	}
-
-	initialized = true;
+	const cofheClient = await getCofheClient();
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	await cofheClient.connect(publicClient as any, walletClient as any);
 }
 
-export async function encryptUint128(value: bigint) {
-	const result = await cofhejs.encrypt([Encryptable.uint128(value)]);
-	if (!result.success) {
-		throw new Error(`Encryption failed: ${result.error}`);
-	}
-	return result.data[0];
+export async function encryptUint128(value: bigint): Promise<InEuint128Arg> {
+	const cofheClient = await getCofheClient();
+	const [encrypted] = await cofheClient.encryptInputs([Encryptable.uint128(value)]).execute();
+	return encrypted as unknown as InEuint128Arg;
 }
 
-export async function getPermission(): Promise<Permission> {
-	const result = cofhejs.getPermission();
-	if (!result.success) {
-		throw new Error(`Get permission failed: ${result.error}`);
-	}
-	return result.data;
-}
-
-export { cofhejs, Encryptable };
+export { Encryptable };

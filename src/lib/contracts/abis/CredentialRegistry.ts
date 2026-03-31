@@ -5,6 +5,14 @@ export const CredentialRegistryABI = [
 		type: 'constructor'
 	},
 	{
+		inputs: [
+			{ internalType: 'uint8', name: 'got', type: 'uint8' },
+			{ internalType: 'uint8', name: 'expected', type: 'uint8' }
+		],
+		name: 'InvalidEncryptedInput',
+		type: 'error'
+	},
+	{
 		anonymous: false,
 		inputs: [{ indexed: true, internalType: 'address', name: 'wallet', type: 'address' }],
 		name: 'CredentialStored',
@@ -34,11 +42,37 @@ export const CredentialRegistryABI = [
 		type: 'function'
 	},
 	{
+		inputs: [],
+		name: 'selfVerify',
+		outputs: [],
+		stateMutability: 'nonpayable',
+		type: 'function'
+	},
+	{
 		inputs: [
 			{ internalType: 'address', name: 'wallet', type: 'address' },
 			{ internalType: 'bool', name: 'status', type: 'bool' }
 		],
 		name: 'setVerified',
+		outputs: [],
+		stateMutability: 'nonpayable',
+		type: 'function'
+	},
+	{
+		inputs: [
+			{
+				components: [
+					{ internalType: 'uint256', name: 'ctHash', type: 'uint256' },
+					{ internalType: 'uint8', name: 'securityZone', type: 'uint8' },
+					{ internalType: 'uint8', name: 'utype', type: 'uint8' },
+					{ internalType: 'bytes', name: 'signature', type: 'bytes' }
+				],
+				internalType: 'struct InEuint128',
+				name: 'encryptedCredential',
+				type: 'tuple'
+			}
+		],
+		name: 'storeCredential',
 		outputs: [],
 		stateMutability: 'nonpayable',
 		type: 'function'

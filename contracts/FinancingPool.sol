@@ -215,8 +215,8 @@ contract FinancingPool {
         require(msg.sender == pos.sme, "FinancingPool: only SME can repay");
         require(!settlementRequested[tokenId], "FinancingPool: settlement already requested");
 
-        // Request async decryption of repay amount
-        FHE.decrypt(pos.encRepayAmount);
+        // Mark repay amount as publicly decryptable
+        FHE.allowPublic(pos.encRepayAmount);
         settlementRequested[tokenId] = true;
     }
 
@@ -224,19 +224,26 @@ contract FinancingPool {
     // Repayment — Step 2: Finalize settlement (after decryption completes)
     // ──────────────────────────────────────────────
 
-    /// @notice Finalize settlement — retrieves decrypted repay amount and stores it.
-    ///         Call after requestSettlement in a separate transaction.
+    /// @notice Finalize settlement — publish decrypted repay amount with proof.
+    ///         Call after requestSettlement. Frontend uses SDK decryptForTx to get
+    ///         the plaintext + signature, then passes them here.
     /// @param tokenId The funded invoice token
-    function finalizeSettlement(uint256 tokenId) external {
+    /// @param _decryptedRepay The plaintext repay amount from off-chain decryption
+    /// @param _signature The Threshold Network signature proving correctness
+    function finalizeSettlement(
+        uint256 tokenId,
+        uint128 _decryptedRepay,
+        bytes memory _signature
+    ) external {
         require(settlementRequested[tokenId], "FinancingPool: settlement not requested");
         require(!settlementReady[tokenId], "FinancingPool: already finalized");
 
         Position storage pos = positions[tokenId];
 
-        (uint128 plainRepay, bool isDecrypted) = FHE.getDecryptResultSafe(pos.encRepayAmount);
-        require(isDecrypted, "FinancingPool: decryption not ready");
+        // Verify and publish — reverts if signature is invalid
+        FHE.publishDecryptResult(pos.encRepayAmount, _decryptedRepay, _signature);
 
-        repayAmountPlain[tokenId] = plainRepay;
+        repayAmountPlain[tokenId] = _decryptedRepay;
         settlementReady[tokenId] = true;
     }
 

@@ -114,8 +114,8 @@ contract CreditOracle {
         encryptedScores[tokenId] = totalScore;
         FHE.allowThis(totalScore);
 
-        // Request async decryption
-        FHE.decrypt(totalScore);
+        // Mark as publicly decryptable (off-chain SDK fetches plaintext + signature)
+        FHE.allowPublic(totalScore);
 
         scoreRequested[tokenId] = true;
         emit ScoreRequested(tokenId);
@@ -125,22 +125,29 @@ contract CreditOracle {
     // Scoring — Transaction 2: Finalize (retrieve decrypted score)
     // ──────────────────────────────────────────────
 
-    /// @notice Retrieve the decrypted score. Call after requestScore in a separate tx.
+    /// @notice Publish the decrypted score on-chain with proof, then finalize.
+    ///         Call after requestScore. The frontend uses SDK decryptForTx to get
+    ///         the plaintext + signature, then passes them here.
     /// @param tokenId The invoice token to finalize
-    function finalizeScore(uint256 tokenId) external {
+    /// @param _decryptedScore The plaintext score from off-chain decryption
+    /// @param _signature The Threshold Network signature proving correctness
+    function finalizeScore(
+        uint256 tokenId,
+        uint8 _decryptedScore,
+        bytes memory _signature
+    ) external {
         require(scoreRequested[tokenId], "CreditOracle: score not requested");
         require(!scoreReady[tokenId], "CreditOracle: score already finalized");
 
         euint8 encScore = encryptedScores[tokenId];
 
-        // Safe retrieval — returns (value, isDecrypted)
-        (uint8 plainScore, bool isDecrypted) = FHE.getDecryptResultSafe(encScore);
-        require(isDecrypted, "CreditOracle: decryption not ready");
+        // Verify and publish — reverts if signature is invalid
+        FHE.publishDecryptResult(encScore, _decryptedScore, _signature);
 
-        scores[tokenId] = plainScore;
+        scores[tokenId] = _decryptedScore;
         scoreReady[tokenId] = true;
 
-        emit ScoreFinalized(tokenId, plainScore);
+        emit ScoreFinalized(tokenId, _decryptedScore);
     }
 
     // ──────────────────────────────────────────────
@@ -151,6 +158,13 @@ contract CreditOracle {
     function getScore(uint256 tokenId) external view returns (uint8) {
         require(scoreReady[tokenId], "CreditOracle: score not available");
         return scores[tokenId];
+    }
+
+    /// @notice Get the ciphertext handle (ctHash) of the encrypted score.
+    ///         Used by the frontend to call decryptForTx before finalizeScore.
+    function getEncryptedScoreHandle(uint256 tokenId) external view returns (bytes32) {
+        require(scoreRequested[tokenId], "CreditOracle: score not requested");
+        return euint8.unwrap(encryptedScores[tokenId]);
     }
 
     /// @notice Check if the score is ready to read

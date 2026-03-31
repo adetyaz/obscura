@@ -1,4 +1,4 @@
-import { getWalletClient, publicClient } from '$lib/viem/client';
+import { getWalletClient, publicClient, getCofheClient } from '$lib/viem/client';
 import { InvoiceVaultABI } from '$lib/contracts/abis/InvoiceVault';
 import { CreditOracleABI } from '$lib/contracts/abis/CreditOracle';
 import { financingPoolAbi } from '$lib/contracts/abis/FinancingPool';
@@ -155,7 +155,7 @@ async function loadInvoices(address: `0x${string}`) {
 	}
 }
 
-async function requestScore(tokenId: bigint) {
+async function requestScore(tokenId: bigint): Promise<`0x${string}`> {
 	const walletClient = getWalletClient();
 	const [account] = await walletClient.getAddresses();
 
@@ -167,25 +167,41 @@ async function requestScore(tokenId: bigint) {
 		account
 	});
 
-	await walletClient.writeContract(request);
+	const hash = await walletClient.writeContract(request);
+	await publicClient.waitForTransactionReceipt({ hash });
+	return hash;
 }
 
-async function finalizeScore(tokenId: bigint) {
+async function finalizeScore(tokenId: bigint): Promise<`0x${string}`> {
 	const walletClient = getWalletClient();
 	const [account] = await walletClient.getAddresses();
+	const cofheClient = await getCofheClient();
+
+	// Fetch the ciphertext handle from the contract
+	const ctHash = await publicClient.readContract({
+		address: ADDRESSES.CreditOracle,
+		abi: CreditOracleABI,
+		functionName: 'getEncryptedScoreHandle',
+		args: [tokenId]
+	});
+
+	// Decrypt off-chain and get the Threshold Network signature for on-chain verification
+	const result = await cofheClient.decryptForTx(ctHash).withoutPermit().execute();
 
 	const { request } = await publicClient.simulateContract({
 		address: ADDRESSES.CreditOracle,
 		abi: CreditOracleABI,
 		functionName: 'finalizeScore',
-		args: [tokenId],
+		args: [tokenId, Number(result.decryptedValue), result.signature as `0x${string}`],
 		account
 	});
 
-	await walletClient.writeContract(request);
+	const hash = await walletClient.writeContract(request);
+	await publicClient.waitForTransactionReceipt({ hash });
+	return hash;
 }
 
-async function requestSettlement(tokenId: bigint) {
+async function requestSettlement(tokenId: bigint): Promise<`0x${string}`> {
 	const walletClient = getWalletClient();
 	const [account] = await walletClient.getAddresses();
 
@@ -198,9 +214,14 @@ async function requestSettlement(tokenId: bigint) {
 	});
 
 	await publicClient.waitForTransactionReceipt({ hash });
+	return hash;
 }
 
-async function finalizeSettlement(tokenId: bigint) {
+async function finalizeSettlement(
+	tokenId: bigint,
+	decryptedRepay: bigint,
+	signature: `0x${string}`
+): Promise<`0x${string}`> {
 	const walletClient = getWalletClient();
 	const [account] = await walletClient.getAddresses();
 
@@ -208,14 +229,15 @@ async function finalizeSettlement(tokenId: bigint) {
 		address: ADDRESSES.FinancingPool,
 		abi: financingPoolAbi,
 		functionName: 'finalizeSettlement',
-		args: [tokenId],
+		args: [tokenId, decryptedRepay, signature],
 		account
 	});
 
 	await publicClient.waitForTransactionReceipt({ hash });
+	return hash;
 }
 
-async function repay(tokenId: bigint, amount: bigint) {
+async function repay(tokenId: bigint, amount: bigint): Promise<`0x${string}`> {
 	const walletClient = getWalletClient();
 	const [account] = await walletClient.getAddresses();
 
@@ -229,6 +251,7 @@ async function repay(tokenId: bigint, amount: bigint) {
 	});
 
 	await publicClient.waitForTransactionReceipt({ hash });
+	return hash;
 }
 
 function reset() {

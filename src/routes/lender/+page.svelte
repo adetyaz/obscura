@@ -1,16 +1,15 @@
 <script lang="ts">
 	import { wallet } from '$lib/stores/wallet.svelte';
-	import { lenderStore, type MarketplaceInvoice } from '$lib/stores/lender.svelte';
-	import FundConfirmModal from '$lib/components/FundConfirmModal.svelte';
+	import { lenderStore } from '$lib/stores/lender.svelte';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 
-	let filterTier = $state<'all' | 'high' | 'medium' | 'low'>('all');
-	let showFundModal = $state(false);
-	let selectedInvoice = $state<MarketplaceInvoice | null>(null);
+	let filterTier = $state<'all' | 'A' | 'B' | 'C'>('all');
+	let filterTenor = $state<'all' | '30D' | '60D' | '90D'>('all');
 
 	$effect(() => {
-		if (!wallet.isConnected) {
-			void goto('/');
+		if (wallet.isRestored && !wallet.isConnected) {
+			void goto(resolve('/'));
 		}
 	});
 
@@ -23,47 +22,29 @@
 		}
 	});
 
-	function openFundModal(invoice: MarketplaceInvoice) {
-		selectedInvoice = invoice;
-		showFundModal = true;
+	function scoreGrade(score: number): 'A' | 'B' | 'C' {
+		if (score >= 75) return 'A';
+		if (score >= 50) return 'B';
+		return 'C';
 	}
 
-	function onFunded() {
-		lenderStore.loadListings();
-		if (wallet.address) {
-			lenderStore.loadPositions(wallet.address);
-		}
+	function gradeClass(score: number): string {
+		if (score >= 75) return 'text-teal border-teal';
+		if (score >= 50) return 'text-ink border-ink/30';
+		return 'text-accent border-accent';
 	}
 
-	function scoreTier(score: number): 'high' | 'medium' | 'low' {
-		if (score >= 75) return 'high';
-		if (score >= 40) return 'medium';
-		return 'low';
-	}
-
-	function scoreColor(score: number): string {
-		if (score >= 75) return 'text-teal';
-		if (score >= 40) return 'text-ink';
-		return 'text-accent';
-	}
-
-	function tierLabel(tier: string): string {
-		if (tier === 'high') return 'LOW RISK';
-		if (tier === 'medium') return 'MEDIUM';
+	function riskLabel(score: number): string {
+		if (score >= 75) return 'LOW RISK';
+		if (score >= 50) return 'MEDIUM';
 		return 'HIGH RISK';
-	}
-
-	function tierColor(tier: string): string {
-		if (tier === 'high') return 'bg-teal/10 text-teal';
-		if (tier === 'medium') return 'bg-ink/5 text-ink';
-		return 'bg-accent/10 text-accent';
 	}
 
 	function formatDate(timestamp: bigint): string {
 		return new Date(Number(timestamp) * 1000).toLocaleDateString('en-US', {
-			year: 'numeric',
 			month: 'short',
-			day: 'numeric'
+			day: 'numeric',
+			year: '2-digit'
 		});
 	}
 
@@ -78,172 +59,212 @@
 	let filteredListings = $derived(
 		filterTier === 'all'
 			? scoredListings
-			: scoredListings.filter((inv) => scoreTier(inv.score!) === filterTier)
+			: scoredListings.filter((inv) => scoreGrade(inv.score!) === filterTier)
 	);
+
+	// Portfolio stats
+	const totalPositions = $derived(lenderStore.positions.length);
+	const activePositions = $derived(lenderStore.positions.filter((p) => !p.settled).length);
 </script>
 
-<div class="mx-auto max-w-6xl px-6">
+<div class="mx-auto max-w-6xl px-6 py-10">
 	{#if !wallet.isConnected}
-		<!-- Redirect handled by $effect -->
+		<!-- redirect handled by effect -->
 	{:else}
 		<!-- Header -->
-		<section class="border-b border-border py-12">
-			<div class="flex items-center justify-between">
-				<div>
-					<p class="mb-2 font-mono text-xs tracking-widest text-muted">LENDER DASHBOARD</p>
-					<h1 class="font-display text-3xl text-ink">Invoice Marketplace</h1>
-				</div>
-				<p class="font-mono text-[10px] text-muted">
-					Showing scored invoices only · amounts encrypted
+		<div class="mb-8 flex items-start justify-between">
+			<div>
+				<p class="mb-1 font-mono text-[10px] tracking-widest text-muted">LENDER MARKETPLACE</p>
+				<h1 class="font-display text-3xl text-ink">Invoice Marketplace</h1>
+				<p class="mt-2 font-mono text-xs text-muted">
+					Scored, verified receivables available for financing
 				</p>
 			</div>
-		</section>
+			<div class="text-right">
+				<p class="mb-1 font-mono text-[9px] text-muted">AMOUNTS</p>
+				<p class="font-mono text-[10px] text-teal">FHE ENCRYPTED · VISIBLE POST-FUND</p>
+			</div>
+		</div>
 
-		<!-- Filters -->
-		<section class="flex items-center gap-3 py-6">
-			<span class="font-mono text-[10px] tracking-widest text-muted">FILTER:</span>
-			{#each ['all', 'high', 'medium', 'low'] as tier (tier)}
-				<button
-					onclick={() => (filterTier = tier as typeof filterTier)}
-					class="px-3 py-1.5 font-mono text-[10px] tracking-wide transition-colors {filterTier ===
-					tier
-						? 'border border-ink bg-ink text-paper'
-						: 'border border-border text-muted hover:text-ink'}"
-				>
-					{tier === 'all' ? 'ALL' : tierLabel(tier)}
-				</button>
-			{/each}
-			<span class="ml-auto font-mono text-[10px] text-muted">
-				{filteredListings.length} invoice{filteredListings.length !== 1 ? 's' : ''}
-			</span>
-		</section>
-
-		<!-- Listings -->
-		<section class="pb-16">
-			{#if lenderStore.isLoading}
-				<div class="flex items-center gap-2 py-12">
-					<div
-						class="h-3 w-3 animate-spin border border-ink border-t-transparent"
-						style="border-radius: 50%;"
-					></div>
-					<p class="font-mono text-[10px] text-muted">Loading marketplace…</p>
+		<div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
+			<!-- Left: Marketplace (2/3) -->
+			<div class="lg:col-span-2">
+				<!-- Filter bar -->
+				<div class="mb-4 flex flex-wrap items-center gap-2">
+					<span class="mr-1 font-mono text-[9px] tracking-widest text-muted">TIER</span>
+					{#each ['all', 'A', 'B', 'C'] as tier (tier)}
+						<button
+							onclick={() => (filterTier = tier as typeof filterTier)}
+							class="px-3 py-1.5 font-mono text-[9px] tracking-wide transition-colors {filterTier ===
+							tier
+								? 'border border-ink bg-ink text-paper'
+								: 'border border-border text-muted hover:border-ink/40 hover:text-ink'}"
+						>
+							{tier === 'all' ? 'ALL' : tier}
+						</button>
+					{/each}
+					<span class="mx-2 text-border">|</span>
+					<span class="mr-1 font-mono text-[9px] tracking-widest text-muted">TENOR</span>
+					{#each ['all', '30D', '60D', '90D'] as tenor (tenor)}
+						<button
+							onclick={() => (filterTenor = tenor as typeof filterTenor)}
+							class="px-3 py-1.5 font-mono text-[9px] tracking-wide transition-colors {filterTenor ===
+							tenor
+								? 'border border-ink bg-ink text-paper'
+								: 'border border-border text-muted hover:border-ink/40 hover:text-ink'}"
+						>
+							{tenor === 'all' ? 'ALL' : tenor}
+						</button>
+					{/each}
+					<span class="ml-auto font-mono text-[9px] text-muted">
+						{filteredListings.length} available
+					</span>
 				</div>
-			{:else if filteredListings.length === 0}
-				<div class="border border-dashed border-border p-12 text-center">
-					<p class="mb-2 font-mono text-xs tracking-widest text-muted">NO SCORED INVOICES</p>
-					<p class="text-sm text-muted">
-						{filterTier === 'all'
-							? 'No invoices with finalized risk scores are available yet.'
-							: 'No invoices match the selected risk tier.'}
+
+				<!-- Invoice cards -->
+				{#if lenderStore.isLoading}
+					<div class="flex items-center justify-center gap-2 border border-border py-16">
+						<div
+							class="h-3 w-3 animate-spin rounded-full border border-ink border-t-transparent"
+						></div>
+						<p class="font-mono text-[10px] text-muted">Loading marketplace…</p>
+					</div>
+				{:else if filteredListings.length === 0}
+					<div class="border border-dashed border-border p-12 text-center">
+						<p class="mb-2 font-mono text-[10px] tracking-widest text-muted">
+							NO INVOICES AVAILABLE
+						</p>
+						<p class="font-mono text-xs text-muted">
+							{filterTier === 'all'
+								? 'No scored invoices are listed for financing yet.'
+								: `No Tier-${filterTier} invoices available.`}
+						</p>
+					</div>
+				{:else}
+					<div class="space-y-3">
+						{#each filteredListings as invoice (invoice.tokenId)}
+							{@const grade = scoreGrade(invoice.score!)}
+							<div class="border border-border p-5 transition-colors hover:border-ink/30">
+								<div class="flex items-start justify-between gap-4">
+									<div class="flex flex-wrap items-center gap-5">
+										<!-- Token ID bracket style -->
+										<div>
+											<p class="mb-0.5 font-mono text-[9px] text-muted">TOKEN</p>
+											<p class="font-mono text-xs text-ink">
+												[{invoice.tokenId.toString().padStart(4, '0')}]
+											</p>
+										</div>
+										<!-- Tier badge -->
+										<div>
+											<p class="mb-0.5 font-mono text-[9px] text-muted">TIER</p>
+											<span
+												class="inline-block border px-1.5 py-0.5 font-mono text-[9px] {gradeClass(
+													invoice.score!
+												)}"
+											>
+												TIER-{grade}
+											</span>
+										</div>
+										<!-- Score -->
+										<div>
+											<p class="mb-0.5 font-mono text-[9px] text-muted">CREDIT SCORE</p>
+											<p class="font-mono text-xs {gradeClass(invoice.score!).split(' ')[0]}">
+												{invoice.score}/100 · {riskLabel(invoice.score!)}
+											</p>
+										</div>
+										<!-- SME -->
+										<div>
+											<p class="mb-0.5 font-mono text-[9px] text-muted">ORIGINATOR</p>
+											<p class="font-mono text-[10px] text-muted">
+												{truncateAddress(invoice.submitter)}
+											</p>
+										</div>
+										<!-- Date -->
+										<div>
+											<p class="mb-0.5 font-mono text-[9px] text-muted">SUBMITTED</p>
+											<p class="font-mono text-[10px] text-muted">
+												{formatDate(invoice.submittedAt)}
+											</p>
+										</div>
+										<!-- Amount -->
+										<div>
+											<p class="mb-0.5 font-mono text-[9px] text-muted">AMOUNT</p>
+											<p class="font-mono text-[10px] text-muted">●●●● USDC</p>
+										</div>
+									</div>
+									<!-- Fund button -->
+									<a
+										href={resolve(`/lender/fund/${invoice.tokenId.toString()}`)}
+										class="shrink-0 border border-ink px-4 py-2 font-mono text-[9px] tracking-widest text-ink transition-colors hover:bg-ink hover:text-paper"
+									>
+										FUND POSITION →
+									</a>
+								</div>
+							</div>
+						{/each}
+					</div>
+				{/if}
+			</div>
+
+			<!-- Right: Portfolio sidebar (1/3) -->
+			<div class="space-y-5">
+				<!-- Portfolio summary -->
+				<div class="border border-border p-5">
+					<p class="mb-4 font-mono text-[10px] tracking-widest text-muted">PORTFOLIO SUMMARY</p>
+					<div class="space-y-4">
+						<div class="border-b border-border pb-3">
+							<p class="mb-1 font-mono text-[9px] text-muted">TOTAL POSITIONS</p>
+							<p class="font-display text-2xl text-ink">{totalPositions}</p>
+						</div>
+						<div class="border-b border-border pb-3">
+							<p class="mb-1 font-mono text-[9px] text-muted">ACTIVE POSITIONS</p>
+							<p class="font-display text-2xl text-ink">{activePositions}</p>
+						</div>
+						<div>
+							<p class="mb-1 font-mono text-[9px] text-muted">YIELD MODE</p>
+							<p class="font-mono text-xs text-teal">DISCOUNT RATE · AUTO</p>
+						</div>
+					</div>
+				</div>
+
+				<!-- Recent settlements / positions -->
+				{#if lenderStore.positions.length > 0}
+					<div class="border border-border p-5">
+						<p class="mb-3 font-mono text-[10px] tracking-widest text-muted">RECENT POSITIONS</p>
+						<div class="space-y-3">
+							{#each lenderStore.positions.slice(0, 5) as pos (pos.tokenId)}
+								<div
+									class="flex items-center justify-between border-b border-border/60 pb-2 last:border-0 last:pb-0"
+								>
+									<div>
+										<p class="font-mono text-[10px] text-ink">
+											[{pos.tokenId.toString().padStart(4, '0')}]
+										</p>
+										<p class="font-mono text-[9px] text-muted">
+											{(pos.advanceRateBps / 100).toFixed(1)}% adv · {(
+												pos.discountRateBps / 100
+											).toFixed(2)}% fee
+										</p>
+									</div>
+									<span class="font-mono text-[9px] {pos.settled ? 'text-muted' : 'text-teal'}">
+										{pos.settled ? 'SETTLED' : 'ACTIVE'}
+									</span>
+								</div>
+							{/each}
+						</div>
+					</div>
+				{/if}
+
+				<!-- FHE indicator -->
+				<div class="border border-border p-4">
+					<p class="mb-2 font-mono text-[9px] tracking-widest text-muted">PRIVACY LAYER</p>
+					<p class="mb-1 font-mono text-[10px] text-teal">● FHE COPROCESSOR ACTIVE</p>
+					<p class="font-mono text-[9px] text-muted">
+						Invoice amounts remain encrypted until position is funded. Credit scores computed via
+						ZKP.
 					</p>
 				</div>
-			{:else}
-				<div class="space-y-3">
-					{#each filteredListings as invoice (invoice.tokenId)}
-						{@const tier = scoreTier(invoice.score!)}
-						<div class="border border-border px-6 py-5">
-							<div class="flex items-center justify-between">
-								<div class="flex items-center gap-8">
-									<div>
-										<p class="font-mono text-[10px] tracking-widest text-muted">TOKEN</p>
-										<p class="font-mono text-sm text-ink">#{invoice.tokenId.toString()}</p>
-									</div>
-									<div>
-										<p class="font-mono text-[10px] tracking-widest text-muted">RISK SCORE</p>
-										<p class="font-mono text-lg font-medium {scoreColor(invoice.score!)}">
-											{invoice.score}
-										</p>
-									</div>
-									<div>
-										<p class="font-mono text-[10px] tracking-widest text-muted">AMOUNT</p>
-										<p class="font-mono text-sm text-muted">●●●● encrypted</p>
-									</div>
-									<div>
-										<p class="font-mono text-[10px] tracking-widest text-muted">SUBMITTER</p>
-										<p class="font-mono text-sm text-muted">
-											{truncateAddress(invoice.submitter)}
-										</p>
-									</div>
-									<div>
-										<p class="font-mono text-[10px] tracking-widest text-muted">SUBMITTED</p>
-										<p class="font-mono text-sm text-muted">
-											{formatDate(invoice.submittedAt)}
-										</p>
-									</div>
-								</div>
-								<div class="flex items-center gap-3">
-									<span
-										class="rounded-full px-3 py-1 font-mono text-[10px] font-medium tracking-wide {tierColor(
-											tier
-										)}"
-									>
-										{tierLabel(tier)}
-									</span>
-									<button
-										onclick={() => openFundModal(invoice)}
-										disabled={lenderStore.isFunding}
-										class="border border-ink px-5 py-2.5 font-mono text-[10px] tracking-wide text-ink hover:bg-ink hover:text-paper disabled:opacity-50"
-									>
-										FUND
-									</button>
-								</div>
-							</div>
-						</div>
-					{/each}
-				</div>
-			{/if}
-		</section>
-
-		<!-- Active Positions -->
-		{#if lenderStore.positions.length > 0}
-			<section class="border-t border-border py-8">
-				<p class="mb-4 font-mono text-xs tracking-widest text-muted">YOUR POSITIONS</p>
-				<div class="space-y-3">
-					{#each lenderStore.positions as pos (pos.tokenId)}
-						<div class="border border-border px-6 py-4">
-							<div class="flex items-center justify-between">
-								<div class="flex items-center gap-8">
-									<div>
-										<p class="font-mono text-[10px] tracking-widest text-muted">TOKEN</p>
-										<p class="font-mono text-sm text-ink">#{pos.tokenId.toString()}</p>
-									</div>
-									<div>
-										<p class="font-mono text-[10px] tracking-widest text-muted">ADVANCE</p>
-										<p class="font-mono text-sm text-ink">
-											{(pos.advanceRateBps / 100).toFixed(1)}%
-										</p>
-									</div>
-									<div>
-										<p class="font-mono text-[10px] tracking-widest text-muted">FEE</p>
-										<p class="font-mono text-sm text-ink">
-											{(pos.discountRateBps / 100).toFixed(2)}%
-										</p>
-									</div>
-									<div>
-										<p class="font-mono text-[10px] tracking-widest text-muted">SCORE</p>
-										<p class="font-mono text-sm text-ink">{pos.score ?? '—'}</p>
-									</div>
-									<div>
-										<p class="font-mono text-[10px] tracking-widest text-muted">FUNDED</p>
-										<p class="font-mono text-sm text-muted">
-											{formatDate(pos.fundedAt)}
-										</p>
-									</div>
-								</div>
-								<span
-									class="rounded-full px-3 py-1 font-mono text-[10px] font-medium tracking-wide {pos.settled
-										? 'bg-muted/10 text-muted'
-										: 'bg-teal/10 text-teal'}"
-								>
-									{pos.settled ? 'SETTLED' : 'ACTIVE'}
-								</span>
-							</div>
-						</div>
-					{/each}
-				</div>
-			</section>
-		{/if}
+			</div>
+		</div>
 	{/if}
 </div>
-
-<FundConfirmModal bind:open={showFundModal} invoice={selectedInvoice} onfunded={onFunded} />

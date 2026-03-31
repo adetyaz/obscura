@@ -1,8 +1,16 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import './layout.css';
 	import { wallet } from '$lib/stores/wallet.svelte';
+	import Toast from '$lib/components/Toast.svelte';
+	import logo from '$lib/assets/obscura-logo.png';
+	import { resolve } from '$app/paths';
 
 	let { children } = $props();
+
+	onMount(() => {
+		wallet.restore();
+	});
 
 	function truncateAddress(addr: string) {
 		return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
@@ -18,10 +26,8 @@
 	<header class="border-b border-border">
 		<div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
 			<!-- Logo -->
-			<a href="/" class="relative font-logo text-2xl font-[800] tracking-tight text-ink">
-				<span class="relative">
-					O<span class="absolute top-1/2 left-0 h-[2px] w-full -translate-y-1/2 bg-ink"></span>
-				</span>BSCURA
+			<a href={resolve('/')}>
+				<img src={logo} alt="Obscura" class="h-8 w-auto" />
 			</a>
 
 			<!-- Nav + Wallet -->
@@ -29,7 +35,7 @@
 				{#if wallet.isConnected && wallet.role}
 					<nav class="flex gap-4 font-mono text-xs tracking-wide text-muted">
 						<a
-							href="/sme"
+							href={resolve('/sme')}
 							class="transition-colors hover:text-ink"
 							class:text-ink={wallet.role === 'sme'}
 							class:font-medium={wallet.role === 'sme'}
@@ -37,7 +43,7 @@
 							SME
 						</a>
 						<a
-							href="/lender"
+							href={resolve('/lender')}
 							class="transition-colors hover:text-ink"
 							class:text-ink={wallet.role === 'lender'}
 							class:font-medium={wallet.role === 'lender'}
@@ -84,4 +90,6 @@
 	<main>
 		{@render children()}
 	</main>
+
+	<Toast />
 </div>

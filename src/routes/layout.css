@@ -1,6 +1,6 @@
-@import 'tailwindcss';
-
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Serif+Display&family=Instrument+Sans:wght@400;500;600;700&family=Syne:wght@700;800&display=swap');
+
+@import 'tailwindcss';
 
 @theme {
 	--color-paper: #f5f2eb;
