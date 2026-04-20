@@ -1,9 +1,17 @@
 import { getWalletClient, publicClient, getCofheClient } from '$lib/viem/client';
-import { initFhe } from '$lib/fhe/client';
+import { initFhe, Encryptable } from '$lib/fhe/client';
 import { InvoiceVaultABI } from '$lib/contracts/abis/InvoiceVault';
 import { CreditOracleABI } from '$lib/contracts/abis/CreditOracle';
 import { financingPoolAbi } from '$lib/contracts/abis/FinancingPool';
 import { ADDRESSES } from '$lib/contracts/addresses';
+
+// Wave 2: PoolTier enum values (mirrors Solidity enum)
+export const PoolTier = { INSTITUTIONAL: 0, GOVERNMENT: 1, RETAIL: 2 } as const;
+export type PoolTierValue = (typeof PoolTier)[keyof typeof PoolTier];
+
+// Wave 2: PositionStatus enum values (mirrors Solidity enum)
+export const PositionStatus = { ACTIVE: 0, REPAID: 1, GRACE: 2, ESCALATED: 3 } as const;
+export type PositionStatusValue = (typeof PositionStatus)[keyof typeof PositionStatus];
 
 export interface InvoiceItem {
 	tokenId: bigint;
@@ -13,12 +21,16 @@ export interface InvoiceItem {
 	scoreRequested: boolean;
 	scoreReady: boolean;
 	score: number | null;
+	poolTier: PoolTierValue; // Wave 2
 	funded: boolean;
 	settled: boolean;
 	fundedAt: bigint | null;
 	lender: string | null;
 	advanceRateBps: number | null;
 	discountRateBps: number | null;
+	maturityDate: bigint | null; // Wave 2
+	gracePeriodEnd: bigint | null; // Wave 2
+	positionStatus: PositionStatusValue | null; // Wave 2
 	settlementRequested: boolean;
 	settlementReady: boolean;
 	repayAmount: bigint | null;
@@ -84,24 +96,47 @@ async function loadInvoices(address: `0x${string}`) {
 				let lender: string | null = null;
 				let advanceRateBps: number | null = null;
 				let discountRateBps: number | null = null;
+				let maturityDate: bigint | null = null;
+				let gracePeriodEnd: bigint | null = null;
+				let positionStatus: PositionStatusValue | null = null;
 				let settlementRequested = false;
 				let settlementReady = false;
 				let repayAmount: bigint | null = null;
 
+				// Wave 2: read pool tier
+				const poolTier = (await publicClient.readContract({
+					address: ADDRESSES.InvoiceVault,
+					abi: InvoiceVaultABI,
+					functionName: 'getPoolTier',
+					args: [tokenId]
+				})) as PoolTierValue;
+
 				if (funded) {
-					const [posLender, , posAdvance, posDiscount, posFundedAt, posSettled] =
-						await publicClient.readContract({
-							address: ADDRESSES.FinancingPool,
-							abi: financingPoolAbi,
-							functionName: 'getPositionMeta',
-							args: [tokenId]
-						});
+					const [
+						posLender,
+						,
+						posAdvance,
+						posDiscount,
+						posFundedAt,
+						posMaturityDate,
+						posGracePeriodEnd,
+						posSettled,
+						posStatus
+					] = await publicClient.readContract({
+						address: ADDRESSES.FinancingPool,
+						abi: financingPoolAbi,
+						functionName: 'getPositionMeta',
+						args: [tokenId]
+					});
 
 					lender = posLender;
 					advanceRateBps = posAdvance;
 					discountRateBps = posDiscount;
 					fundedAt = posFundedAt;
 					settled = posSettled;
+					maturityDate = posMaturityDate;
+					gracePeriodEnd = posGracePeriodEnd;
+					positionStatus = Number(posStatus) as PositionStatusValue;
 
 					settlementRequested = await publicClient.readContract({
 						address: ADDRESSES.FinancingPool,
@@ -135,12 +170,16 @@ async function loadInvoices(address: `0x${string}`) {
 					scoreRequested,
 					scoreReady,
 					score,
+					poolTier,
 					funded,
 					settled,
 					fundedAt,
 					lender,
 					advanceRateBps,
 					discountRateBps,
+					maturityDate,
+					gracePeriodEnd,
+					positionStatus,
 					settlementRequested,
 					settlementReady,
 					repayAmount
@@ -264,6 +303,60 @@ async function repay(tokenId: bigint, amount: bigint): Promise<`0x${string}`> {
 	return hash;
 }
 
+// Wave 2: Submit a government invoice (KYB required, encrypts gov ref)
+async function submitGovernmentInvoice(
+	amountUsdc: bigint,
+	dueDateUnix: bigint,
+	encryptedBuyer: `0x${string}`,
+	govRefValue: bigint
+): Promise<`0x${string}`> {
+	const walletClient = getWalletClient();
+	const [account] = await walletClient.getAddresses();
+	await initFhe();
+	const cofheClient = await getCofheClient();
+
+	const [encAmount, encDueDate, encGovRef] = await cofheClient
+		.encryptInputs([
+			Encryptable.uint128(amountUsdc),
+			Encryptable.uint128(dueDateUnix),
+			Encryptable.uint128(govRefValue)
+		])
+		.execute();
+
+	const { request } = await publicClient.simulateContract({
+		address: ADDRESSES.InvoiceVault,
+		abi: InvoiceVaultABI,
+		functionName: 'submitGovernmentInvoice',
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		args: [encAmount as any, encDueDate as any, encryptedBuyer, encGovRef as any],
+		account
+	});
+
+	const hash = await walletClient.writeContract(request);
+	await publicClient.waitForTransactionReceipt({ hash });
+	return hash;
+}
+
+// Wave 2: Get the advance rate tier for a borrower (85 default, 90 after 3+ repayments)
+async function getAdvanceRateTier(address: `0x${string}`): Promise<number> {
+	return await publicClient.readContract({
+		address: ADDRESSES.CreditOracle,
+		abi: CreditOracleABI,
+		functionName: 'getAdvanceRateTier',
+		args: [address]
+	});
+}
+
+// Wave 2: Get repayment count for a borrower
+async function getRepaymentCount(address: `0x${string}`): Promise<number> {
+	return await publicClient.readContract({
+		address: ADDRESSES.CreditOracle,
+		abi: CreditOracleABI,
+		functionName: 'repaymentCounts',
+		args: [address]
+	});
+}
+
 function reset() {
 	invoices = [];
 	isLoading = false;
@@ -282,5 +375,8 @@ export const smeStore = {
 	requestSettlement,
 	finalizeSettlement,
 	repay,
+	submitGovernmentInvoice,
+	getAdvanceRateTier,
+	getRepaymentCount,
 	reset
 };

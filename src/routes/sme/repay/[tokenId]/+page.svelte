@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { wallet } from '$lib/stores/wallet.svelte';
 	import { smeStore } from '$lib/stores/sme.svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 
-	const tokenIdParam = $derived($page.params.tokenId ?? '0');
+	const tokenIdParam = $derived(page.params.tokenId ?? '0');
 	const tokenId = $derived(BigInt(tokenIdParam));
 
 	$effect(() => {
@@ -146,7 +146,7 @@
 				</p>
 				{#if lastTxHash}
 					<a
-						href={`${EXPLORER}${lastTxHash}`}
+						href={resolve(`${EXPLORER}${lastTxHash}`)}
 						target="_blank"
 						rel="noopener noreferrer"
 						class="mb-4 inline-block font-mono text-[10px] text-muted transition-colors hover:text-teal"

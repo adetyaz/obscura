@@ -20,6 +20,18 @@ export const CredentialRegistryABI = [
 	},
 	{
 		anonymous: false,
+		inputs: [{ indexed: true, internalType: 'address', name: 'wallet', type: 'address' }],
+		name: 'KYBVerified',
+		type: 'event'
+	},
+	{
+		anonymous: false,
+		inputs: [{ indexed: true, internalType: 'address', name: 'wallet', type: 'address' }],
+		name: 'KYCVerified',
+		type: 'event'
+	},
+	{
+		anonymous: false,
 		inputs: [
 			{ indexed: true, internalType: 'address', name: 'wallet', type: 'address' },
 			{ indexed: false, internalType: 'bool', name: 'status', type: 'bool' }
@@ -29,7 +41,28 @@ export const CredentialRegistryABI = [
 	},
 	{
 		inputs: [{ internalType: 'address', name: 'wallet', type: 'address' }],
+		name: 'getCredentialType',
+		outputs: [{ internalType: 'enum CredentialRegistry.CredentialType', name: '', type: 'uint8' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'address', name: 'wallet', type: 'address' }],
 		name: 'isVerified',
+		outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'address', name: 'wallet', type: 'address' }],
+		name: 'isVerifiedKYB',
+		outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'address', name: 'wallet', type: 'address' }],
+		name: 'isVerifiedKYC',
 		outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
 		stateMutability: 'view',
 		type: 'function'
@@ -49,11 +82,32 @@ export const CredentialRegistryABI = [
 		type: 'function'
 	},
 	{
+		inputs: [],
+		name: 'selfVerifyKYC',
+		outputs: [],
+		stateMutability: 'nonpayable',
+		type: 'function'
+	},
+	{
 		inputs: [
 			{ internalType: 'address', name: 'wallet', type: 'address' },
 			{ internalType: 'bool', name: 'status', type: 'bool' }
 		],
 		name: 'setVerified',
+		outputs: [],
+		stateMutability: 'nonpayable',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'address', name: 'wallet', type: 'address' }],
+		name: 'setVerifiedKYB',
+		outputs: [],
+		stateMutability: 'nonpayable',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'address', name: 'wallet', type: 'address' }],
+		name: 'setVerifiedKYC',
 		outputs: [],
 		stateMutability: 'nonpayable',
 		type: 'function'

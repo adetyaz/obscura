@@ -30,6 +30,24 @@ export const InvoiceVaultABI = [
 			{ indexed: true, internalType: 'uint256', name: 'tokenId', type: 'uint256' },
 			{ indexed: true, internalType: 'address', name: 'submitter', type: 'address' }
 		],
+		name: 'FreelancerInvoiceSubmitted',
+		type: 'event'
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{ indexed: true, internalType: 'uint256', name: 'tokenId', type: 'uint256' },
+			{ indexed: true, internalType: 'address', name: 'submitter', type: 'address' }
+		],
+		name: 'GovernmentInvoiceSubmitted',
+		type: 'event'
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{ indexed: true, internalType: 'uint256', name: 'tokenId', type: 'uint256' },
+			{ indexed: true, internalType: 'address', name: 'submitter', type: 'address' }
+		],
 		name: 'InvoiceSubmitted',
 		type: 'event'
 	},
@@ -103,12 +121,26 @@ export const InvoiceVaultABI = [
 	},
 	{
 		inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
+		name: 'getEncryptedGovRef',
+		outputs: [{ internalType: 'euint128', name: '', type: 'bytes32' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
 		name: 'getInvoiceMeta',
 		outputs: [
 			{ internalType: 'address', name: 'submitter', type: 'address' },
 			{ internalType: 'uint256', name: 'submittedAt', type: 'uint256' },
 			{ internalType: 'bool', name: 'active', type: 'bool' }
 		],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
+		name: 'getPoolTier',
+		outputs: [{ internalType: 'enum InvoiceVault.PoolTier', name: '', type: 'uint8' }],
 		stateMutability: 'view',
 		type: 'function'
 	},
@@ -166,6 +198,79 @@ export const InvoiceVaultABI = [
 	{
 		inputs: [{ internalType: 'address', name: '_financingPool', type: 'address' }],
 		name: 'setFinancingPool',
+		outputs: [],
+		stateMutability: 'nonpayable',
+		type: 'function'
+	},
+	{
+		inputs: [
+			{
+				components: [
+					{ internalType: 'uint256', name: 'ctHash', type: 'uint256' },
+					{ internalType: 'uint8', name: 'securityZone', type: 'uint8' },
+					{ internalType: 'uint8', name: 'utype', type: 'uint8' },
+					{ internalType: 'bytes', name: 'signature', type: 'bytes' }
+				],
+				internalType: 'struct InEuint128',
+				name: 'encryptedAmount',
+				type: 'tuple'
+			},
+			{
+				components: [
+					{ internalType: 'uint256', name: 'ctHash', type: 'uint256' },
+					{ internalType: 'uint8', name: 'securityZone', type: 'uint8' },
+					{ internalType: 'uint8', name: 'utype', type: 'uint8' },
+					{ internalType: 'bytes', name: 'signature', type: 'bytes' }
+				],
+				internalType: 'struct InEuint128',
+				name: 'encryptedDueDate',
+				type: 'tuple'
+			},
+			{ internalType: 'bytes', name: 'encryptedBuyer', type: 'bytes' }
+		],
+		name: 'submitFreelancerInvoice',
+		outputs: [],
+		stateMutability: 'nonpayable',
+		type: 'function'
+	},
+	{
+		inputs: [
+			{
+				components: [
+					{ internalType: 'uint256', name: 'ctHash', type: 'uint256' },
+					{ internalType: 'uint8', name: 'securityZone', type: 'uint8' },
+					{ internalType: 'uint8', name: 'utype', type: 'uint8' },
+					{ internalType: 'bytes', name: 'signature', type: 'bytes' }
+				],
+				internalType: 'struct InEuint128',
+				name: 'encryptedAmount',
+				type: 'tuple'
+			},
+			{
+				components: [
+					{ internalType: 'uint256', name: 'ctHash', type: 'uint256' },
+					{ internalType: 'uint8', name: 'securityZone', type: 'uint8' },
+					{ internalType: 'uint8', name: 'utype', type: 'uint8' },
+					{ internalType: 'bytes', name: 'signature', type: 'bytes' }
+				],
+				internalType: 'struct InEuint128',
+				name: 'encryptedDueDate',
+				type: 'tuple'
+			},
+			{ internalType: 'bytes', name: 'encryptedBuyer', type: 'bytes' },
+			{
+				components: [
+					{ internalType: 'uint256', name: 'ctHash', type: 'uint256' },
+					{ internalType: 'uint8', name: 'securityZone', type: 'uint8' },
+					{ internalType: 'uint8', name: 'utype', type: 'uint8' },
+					{ internalType: 'bytes', name: 'signature', type: 'bytes' }
+				],
+				internalType: 'struct InEuint128',
+				name: 'encryptedGovRef',
+				type: 'tuple'
+			}
+		],
+		name: 'submitGovernmentInvoice',
 		outputs: [],
 		stateMutability: 'nonpayable',
 		type: 'function'

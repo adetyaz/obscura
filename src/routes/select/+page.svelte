@@ -79,7 +79,7 @@
 							>FHE COPROCESSOR ACTIVE</span
 						>
 					</div>
-					<p class="mt-1 font-mono text-[10px] text-muted">Invoice data encrypted via cofhejs</p>
+					<p class="mt-1 font-mono text-[10px] text-muted">Invoice data encrypted via cofhe/sdk</p>
 				</div>
 
 				<div class="mt-6 flex items-center justify-between">

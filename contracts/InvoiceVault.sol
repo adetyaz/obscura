@@ -1,16 +1,26 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
+pragma solidity ^0.8.28;
 
 import "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
 interface ICredentialRegistry {
+    enum CredentialType { NONE, KYB, KYC_INDIVIDUAL }
     function isVerified(address wallet) external view returns (bool);
+    function isVerifiedKYB(address wallet) external view returns (bool);
+    function isVerifiedKYC(address wallet) external view returns (bool);
 }
 
 /// @title InvoiceVault
 /// @notice Accepts encrypted invoice data, stores it, and mints ERC-1155 tokens.
-///         Only KYB-verified addresses can submit invoices.
+///         Wave 1: corporate invoices (KYB required).
+///         Wave 2: government invoices (KYB + gov ref), freelancer invoices (KYC_INDIVIDUAL).
 contract InvoiceVault {
+    // ──────────────────────────────────────────────
+    // Wave 2: Pool tier enum
+    // ──────────────────────────────────────────────
+
+    enum PoolTier { INSTITUTIONAL, GOVERNMENT, RETAIL }
+
     // ──────────────────────────────────────────────
     // State
     // ──────────────────────────────────────────────
@@ -27,6 +37,8 @@ contract InvoiceVault {
         euint128 encryptedAmount;
         euint128 encryptedDueDate;
         bytes encryptedBuyer;
+        euint128 encryptedGovRef;   // Wave 2: government contract reference (zero for non-gov)
+        PoolTier tier;               // Wave 2: pool tier classification
         uint256 submittedAt;
         bool active;
     }
@@ -49,6 +61,8 @@ contract InvoiceVault {
     // ──────────────────────────────────────────────
 
     event InvoiceSubmitted(uint256 indexed tokenId, address indexed submitter);
+    event GovernmentInvoiceSubmitted(uint256 indexed tokenId, address indexed submitter);
+    event FreelancerInvoiceSubmitted(uint256 indexed tokenId, address indexed submitter);
     event TransferSingle(
         address indexed operator,
         address indexed from,
@@ -67,6 +81,22 @@ contract InvoiceVault {
         require(
             credentialRegistry.isVerified(msg.sender),
             "InvoiceVault: caller not verified"
+        );
+        _;
+    }
+
+    modifier onlyVerifiedKYB() {
+        require(
+            credentialRegistry.isVerifiedKYB(msg.sender),
+            "InvoiceVault: KYB credential required"
+        );
+        _;
+    }
+
+    modifier onlyVerifiedKYC() {
+        require(
+            credentialRegistry.isVerifiedKYC(msg.sender),
+            "InvoiceVault: KYC_INDIVIDUAL credential required"
         );
         _;
     }
@@ -108,9 +138,9 @@ contract InvoiceVault {
     // Invoice submission
     // ──────────────────────────────────────────────
 
-    /// @notice Submit an encrypted invoice. Mints an ERC-1155 token.
-    /// @param encryptedAmount  Encrypted invoice amount (from cofhejs)
-    /// @param encryptedDueDate Encrypted due date as unix timestamp (from cofhejs)
+    /// @notice Submit a corporate encrypted invoice (Wave 1). Mints an ERC-1155 token.
+    /// @param encryptedAmount  Encrypted invoice amount (from cofhe/sdk)
+    /// @param encryptedDueDate Encrypted due date as unix timestamp (from cofhe/sdk)
     /// @param encryptedBuyer   Encrypted buyer name as bytes
     function submitInvoice(
         InEuint128 calldata encryptedAmount,
@@ -128,36 +158,115 @@ contract InvoiceVault {
             encryptedAmount: amount,
             encryptedDueDate: dueDate,
             encryptedBuyer: encryptedBuyer,
+            encryptedGovRef: euint128.wrap(0),
+            tier: PoolTier.INSTITUTIONAL,
             submittedAt: block.timestamp,
             active: true
         });
 
         userInvoices[msg.sender].push(tokenId);
 
-        // FHE access control — contract needs access to stored values
-        FHE.allowThis(amount);
-        FHE.allowThis(dueDate);
-
-        // Submitter can view their own encrypted data
-        FHE.allowSender(amount);
-        FHE.allowSender(dueDate);
-
-        // Grant CreditOracle access to run scoring
-        if (creditOracle != address(0)) {
-            FHE.allow(amount, creditOracle);
-            FHE.allow(dueDate, creditOracle);
-        }
-
-        // Grant FinancingPool access to compute advance/fee amounts
-        if (financingPool != address(0)) {
-            FHE.allow(amount, financingPool);
-            FHE.allow(dueDate, financingPool);
-        }
+        _grantFheAccess(tokenId, amount, dueDate);
 
         // Mint ERC-1155 token (1 unit per invoice)
         _balances[tokenId][msg.sender] = 1;
         emit TransferSingle(msg.sender, address(0), msg.sender, tokenId, 1);
         emit InvoiceSubmitted(tokenId, msg.sender);
+    }
+
+    /// @notice Wave 2: Submit a government contract receivable. KYB required.
+    /// @param encryptedAmount  Encrypted invoice amount
+    /// @param encryptedDueDate Encrypted due date as unix timestamp
+    /// @param encryptedBuyer   Encrypted buyer name as bytes
+    /// @param encryptedGovRef  Encrypted government contract reference number
+    function submitGovernmentInvoice(
+        InEuint128 calldata encryptedAmount,
+        InEuint128 calldata encryptedDueDate,
+        bytes calldata encryptedBuyer,
+        InEuint128 calldata encryptedGovRef
+    ) external onlyVerifiedKYB {
+        euint128 amount = FHE.asEuint128(encryptedAmount);
+        euint128 dueDate = FHE.asEuint128(encryptedDueDate);
+        euint128 govRef = FHE.asEuint128(encryptedGovRef);
+
+        uint256 tokenId = nextTokenId++;
+
+        invoices[tokenId] = Invoice({
+            submitter: msg.sender,
+            encryptedAmount: amount,
+            encryptedDueDate: dueDate,
+            encryptedBuyer: encryptedBuyer,
+            encryptedGovRef: govRef,
+            tier: PoolTier.GOVERNMENT,
+            submittedAt: block.timestamp,
+            active: true
+        });
+
+        userInvoices[msg.sender].push(tokenId);
+
+        _grantFheAccess(tokenId, amount, dueDate);
+
+        // Grant CreditOracle access to the gov reference for scoring
+        FHE.allowThis(govRef);
+        FHE.allowSender(govRef);
+        if (creditOracle != address(0)) {
+            FHE.allow(govRef, creditOracle);
+        }
+
+        _balances[tokenId][msg.sender] = 1;
+        emit TransferSingle(msg.sender, address(0), msg.sender, tokenId, 1);
+        emit GovernmentInvoiceSubmitted(tokenId, msg.sender);
+    }
+
+    /// @notice Wave 2: Submit a freelancer invoice. KYC_INDIVIDUAL required. Routed to retail pool.
+    /// @param encryptedAmount  Encrypted invoice amount
+    /// @param encryptedDueDate Encrypted due date as unix timestamp
+    /// @param encryptedBuyer   Encrypted buyer name as bytes
+    function submitFreelancerInvoice(
+        InEuint128 calldata encryptedAmount,
+        InEuint128 calldata encryptedDueDate,
+        bytes calldata encryptedBuyer
+    ) external onlyVerifiedKYC {
+        euint128 amount = FHE.asEuint128(encryptedAmount);
+        euint128 dueDate = FHE.asEuint128(encryptedDueDate);
+
+        uint256 tokenId = nextTokenId++;
+
+        invoices[tokenId] = Invoice({
+            submitter: msg.sender,
+            encryptedAmount: amount,
+            encryptedDueDate: dueDate,
+            encryptedBuyer: encryptedBuyer,
+            encryptedGovRef: euint128.wrap(0),
+            tier: PoolTier.RETAIL,
+            submittedAt: block.timestamp,
+            active: true
+        });
+
+        userInvoices[msg.sender].push(tokenId);
+
+        _grantFheAccess(tokenId, amount, dueDate);
+
+        _balances[tokenId][msg.sender] = 1;
+        emit TransferSingle(msg.sender, address(0), msg.sender, tokenId, 1);
+        emit FreelancerInvoiceSubmitted(tokenId, msg.sender);
+    }
+
+    /// @dev Internal: grant FHE access to contract, sender, oracle, and pool
+    function _grantFheAccess(uint256 tokenId, euint128 amount, euint128 dueDate) internal {
+        tokenId; // suppress unused warning — used by caller for context
+        FHE.allowThis(amount);
+        FHE.allowThis(dueDate);
+        FHE.allowSender(amount);
+        FHE.allowSender(dueDate);
+        if (creditOracle != address(0)) {
+            FHE.allow(amount, creditOracle);
+            FHE.allow(dueDate, creditOracle);
+        }
+        if (financingPool != address(0)) {
+            FHE.allow(amount, financingPool);
+            FHE.allow(dueDate, financingPool);
+        }
     }
 
     // ──────────────────────────────────────────────
@@ -182,6 +291,16 @@ contract InvoiceVault {
     /// @notice Get encrypted due date handle (caller must have FHE access)
     function getEncryptedDueDate(uint256 tokenId) external view returns (euint128) {
         return invoices[tokenId].encryptedDueDate;
+    }
+
+    /// @notice Wave 2: Get encrypted government reference handle (caller must have FHE access)
+    function getEncryptedGovRef(uint256 tokenId) external view returns (euint128) {
+        return invoices[tokenId].encryptedGovRef;
+    }
+
+    /// @notice Wave 2: Get the pool tier for a token
+    function getPoolTier(uint256 tokenId) external view returns (PoolTier) {
+        return invoices[tokenId].tier;
     }
 
     /// @notice Get all token IDs for a user

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { wallet } from '$lib/stores/wallet.svelte';
-	import { smeStore } from '$lib/stores/sme.svelte';
+	import { smeStore, PoolTier } from '$lib/stores/sme.svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { SvelteMap } from 'svelte/reactivity';
@@ -14,6 +14,20 @@
 	$effect(() => {
 		if (wallet.isConnected && wallet.isVerified && wallet.address) {
 			smeStore.loadInvoices(wallet.address);
+		}
+	});
+
+	let advanceRateTier = $state<number>(85);
+	let repaymentCount = $state<number>(0);
+
+	$effect(() => {
+		if (wallet.isConnected && wallet.address) {
+			smeStore.getAdvanceRateTier(wallet.address as `0x${string}`).then((t) => {
+				advanceRateTier = t;
+			});
+			smeStore.getRepaymentCount(wallet.address as `0x${string}`).then((c) => {
+				repaymentCount = c;
+			});
 		}
 	});
 
@@ -78,6 +92,18 @@
 		return 'text-accent';
 	}
 
+	function poolTierLabel(tier: number): string {
+		if (tier === PoolTier.GOVERNMENT) return 'GOV';
+		if (tier === PoolTier.RETAIL) return 'RETAIL';
+		return 'CORP';
+	}
+
+	function poolTierClass(tier: number): string {
+		if (tier === PoolTier.GOVERNMENT) return 'text-teal';
+		if (tier === PoolTier.RETAIL) return 'text-ink';
+		return 'text-muted';
+	}
+
 	function tierLabel(invoice: (typeof smeStore.invoices)[0]): string {
 		if (!invoice.scoreReady || invoice.score === null) return '—';
 		if (invoice.score >= 75) return 'TIER-A';
@@ -96,11 +122,6 @@
 
 	const totalReceivables = $derived(smeStore.invoices.filter((i) => i.active && !i.settled).length);
 	const activeAdvances = $derived(smeStore.invoices.filter((i) => i.funded && !i.settled).length);
-	const avgScore = $derived(() => {
-		const scored = smeStore.invoices.filter((i) => i.scoreReady && i.score !== null);
-		if (scored.length === 0) return null;
-		return Math.round(scored.reduce((s, i) => s + (i.score ?? 0), 0) / scored.length);
-	});
 </script>
 
 <div class="mx-auto max-w-6xl px-6 py-10">
@@ -136,12 +157,27 @@
 					</span>
 				</div>
 			</div>
-			<a
-				href={resolve('/sme/invoice')}
-				class="bg-ink px-5 py-2.5 font-mono text-xs tracking-widest text-paper transition-opacity hover:opacity-80"
-			>
-				+ SUBMIT INVOICE
-			</a>
+			<!-- Wave 2: invoice type selector -->
+			<div class="flex items-center gap-2">
+				<a
+					href={resolve('/sme/invoice')}
+					class="bg-ink px-4 py-2.5 font-mono text-xs tracking-widest text-paper transition-opacity hover:opacity-80"
+				>
+					+ CORPORATE
+				</a>
+				<a
+					href={resolve('/sme/invoice/government')}
+					class="border border-teal px-4 py-2.5 font-mono text-xs tracking-widest text-teal transition-colors hover:bg-teal hover:text-paper"
+				>
+					+ GOV CONTRACT
+				</a>
+				<a
+					href={resolve('/freelancer')}
+					class="border border-muted px-4 py-2.5 font-mono text-xs tracking-widest text-muted transition-colors hover:border-ink hover:text-ink"
+				>
+					FREELANCER →
+				</a>
+			</div>
 		</div>
 
 		<!-- Stats row -->
@@ -157,11 +193,19 @@
 				<p class="mt-0.5 font-mono text-[10px] text-muted">Funded positions</p>
 			</div>
 			<div class="bg-paper px-6 py-5">
-				<p class="mb-1 font-mono text-[10px] tracking-widest text-muted">PROTOCOL REPUTATION</p>
-				<p class="font-display text-2xl text-ink">
-					{avgScore() !== null ? `${avgScore()}/100` : '—'}
+				<p class="mb-1 font-mono text-[10px] tracking-widest text-muted">ADVANCE RATE TIER</p>
+				<p class="font-display text-2xl {advanceRateTier >= 90 ? 'text-teal' : 'text-ink'}">
+					{advanceRateTier}%
 				</p>
-				<p class="mt-0.5 font-mono text-[10px] text-muted">Avg credit score</p>
+				<p class="mt-0.5 font-mono text-[10px] text-muted">
+					{#if repaymentCount >= 3}
+						Earned · {repaymentCount} repayments
+					{:else if repaymentCount > 0}
+						{3 - repaymentCount} more to unlock 90%
+					{:else}
+						Repay 3× to earn 90%
+					{/if}
+				</p>
 			</div>
 		</div>
 
@@ -191,10 +235,11 @@
 			{:else}
 				<!-- Table header -->
 				<div
-					class="grid grid-cols-[80px_90px_70px_100px_1fr] gap-4 border-b border-border px-4 py-2.5"
+					class="grid grid-cols-[80px_90px_60px_70px_100px_1fr] gap-4 border-b border-border px-4 py-2.5"
 				>
 					<p class="font-mono text-[9px] tracking-widest text-muted">TOKEN ID</p>
 					<p class="font-mono text-[9px] tracking-widest text-muted">SUBMITTED</p>
+					<p class="font-mono text-[9px] tracking-widest text-muted">POOL</p>
 					<p class="font-mono text-[9px] tracking-widest text-muted">TIER</p>
 					<p class="font-mono text-[9px] tracking-widest text-muted">STATUS</p>
 					<p class="font-mono text-[9px] tracking-widest text-muted">ACTIONS</p>
@@ -203,7 +248,7 @@
 				{#each smeStore.invoices as invoice (invoice.tokenId)}
 					{@const status = statusLabel(invoice)}
 					<div
-						class="grid grid-cols-[80px_90px_70px_100px_1fr] items-center gap-4 border-b border-border px-4 py-3.5 transition-colors hover:bg-ink/1.5"
+						class="grid grid-cols-[80px_90px_60px_70px_100px_1fr] items-center gap-4 border-b border-border px-4 py-3.5 transition-colors hover:bg-ink/1.5"
 					>
 						<!-- Token ID -->
 						<p class="font-mono text-xs text-ink">
@@ -213,7 +258,12 @@
 						<!-- Date -->
 						<p class="font-mono text-xs text-muted">{formatDate(invoice.submittedAt)}</p>
 
-						<!-- Tier + Grade -->
+						<!-- Pool tier badge -->
+						<p class="font-mono text-[10px] {poolTierClass(invoice.poolTier)}">
+							{poolTierLabel(invoice.poolTier)}
+						</p>
+
+						<!-- Credit tier + Grade -->
 						<div>
 							<p class="font-mono text-[10px] text-ink">{tierLabel(invoice)}</p>
 							{#if invoice.scoreReady && invoice.score !== null}
@@ -255,6 +305,7 @@
 							{/if}
 
 							{#if txHashes.has(invoice.tokenId)}
+								<!-- eslint-disable svelte/no-navigation-without-resolve -->
 								<a
 									href={`${EXPLORER}${txHashes.get(invoice.tokenId)}`}
 									target="_blank"
@@ -263,6 +314,7 @@
 								>
 									VIEW ON EXPLORER ↗
 								</a>
+								<!-- eslint-enable svelte/no-navigation-without-resolve -->
 							{/if}
 
 							{#if invoice.funded && !invoice.settled}

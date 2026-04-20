@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
+pragma solidity ^0.8.28;
 
 import "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
@@ -33,12 +33,20 @@ interface IInvoiceVaultFP {
 interface ICreditOracle {
     function isScoreReady(uint256 tokenId) external view returns (bool);
     function getScore(uint256 tokenId) external view returns (uint8);
+    function updateReputation(address borrower) external;
 }
 
 /// @title FinancingPool
 /// @notice Handles invoice funding, escrow, repayment, and settlement.
-///         Advance amount and lender yield are computed in FHE encrypted space.
+///         Wave 1: advance amounts and lender yield computed in FHE encrypted space.
+///         Wave 2: adds grace period, default escalation, and reputation updates on repayment.
 contract FinancingPool {
+    // ──────────────────────────────────────────────
+    // Wave 2: Position status enum
+    // ──────────────────────────────────────────────
+
+    enum PositionStatus { ACTIVE, REPAID, GRACE, ESCALATED }
+
     // ──────────────────────────────────────────────
     // State
     // ──────────────────────────────────────────────
@@ -50,18 +58,24 @@ contract FinancingPool {
     /// @notice Basis-point denominator (100% = 10_000)
     uint128 public constant BPS = 10_000;
 
+    /// @notice Wave 2: Grace period before escalation is allowed
+    uint256 public constant GRACE_PERIOD = 14 days;
+
     struct Position {
         uint256 tokenId;
         address lender;
         address sme;
-        uint16 advanceRateBps;      // e.g. 8500 = 85%
-        uint16 discountRateBps;     // e.g. 200 = 2%
+        uint16 advanceRateBps;
+        uint16 discountRateBps;
         uint256 fundedAt;
+        uint256 maturityDate;       // Wave 2: plaintext maturity (tenor days from fundedAt)
+        uint256 gracePeriodEnd;     // Wave 2: gracePeriodEnd = maturityDate + GRACE_PERIOD
         bool settled;
+        PositionStatus status;      // Wave 2: lifecycle status
         // Encrypted fields — computed on funding
-        euint128 encAdvanceAmount;  // amount * advanceRate / BPS
-        euint128 encFeeAmount;      // amount * discountRate / BPS
-        euint128 encRepayAmount;    // advanceAmount + feeAmount
+        euint128 encAdvanceAmount;
+        euint128 encFeeAmount;
+        euint128 encRepayAmount;
     }
 
     /// @notice Token ID → Position
@@ -79,7 +93,7 @@ contract FinancingPool {
 
     mapping(uint256 => bool) public settlementRequested;
     mapping(uint256 => bool) public settlementReady;
-    mapping(uint256 => uint128) public repayAmountPlain; // decrypted repay amount
+    mapping(uint256 => uint128) public repayAmountPlain;
 
     // ──────────────────────────────────────────────
     // Events
@@ -100,6 +114,12 @@ contract FinancingPool {
         address indexed lender,
         address indexed sme
     );
+
+    /// @notice Wave 2: Emitted when a position enters grace period
+    event GracePeriodStarted(uint256 indexed tokenId, uint256 gracePeriodEnd);
+
+    /// @notice Wave 2: Emitted when lender triggers escalation after grace expires
+    event EscalationTriggered(uint256 indexed tokenId, address indexed lender, address indexed borrower);
 
     // ──────────────────────────────────────────────
     // Modifiers
@@ -127,62 +147,54 @@ contract FinancingPool {
     // ──────────────────────────────────────────────
 
     /// @notice Lender funds an invoice. Token is locked in escrow.
-    ///         Advance and fee amounts are computed in FHE encrypted space.
-    /// @param tokenId       The invoice token to fund
-    /// @param advanceRateBps Advance rate in basis points (e.g. 8500 = 85%)
+    ///         Wave 2: accepts a tenorDays param to set maturity + grace period end.
+    /// @param tokenId         The invoice token to fund
+    /// @param advanceRateBps  Advance rate in basis points (e.g. 8500 = 85%)
     /// @param discountRateBps Discount/fee rate in basis points (e.g. 200 = 2%)
+    /// @param tenorDays       Repayment tenor in days (used to compute maturity date)
     function fundInvoice(
         uint256 tokenId,
         uint16 advanceRateBps,
-        uint16 discountRateBps
+        uint16 discountRateBps,
+        uint16 tenorDays
     ) external {
         require(!isFunded[tokenId], "FinancingPool: already funded");
         require(advanceRateBps > 0 && advanceRateBps <= BPS, "FinancingPool: invalid advance rate");
         require(discountRateBps > 0 && discountRateBps <= BPS, "FinancingPool: invalid discount rate");
+        require(tenorDays > 0 && tenorDays <= 365, "FinancingPool: invalid tenor");
 
-        // Verify invoice is active and scored
         (address submitter, , bool active) = invoiceVault.getInvoiceMeta(tokenId);
         require(submitter != address(0), "FinancingPool: invoice not found");
         require(active, "FinancingPool: invoice not active");
         require(creditOracle.isScoreReady(tokenId), "FinancingPool: score not ready");
         require(msg.sender != submitter, "FinancingPool: cannot fund own invoice");
 
-        // Transfer token from SME to this contract (escrow)
-        // Requires SME to have approved or the InvoiceVault owner to authorize
         invoiceVault.safeTransferFrom(submitter, address(this), tokenId, 1, "");
 
-        // ── FHE computation: advance and fee amounts ──
         euint128 encAmount = invoiceVault.getEncryptedAmount(tokenId);
 
-        // advanceAmount = encAmount * advanceRateBps / BPS
         euint128 encAdvance = FHE.div(
             FHE.mul(encAmount, FHE.asEuint128(uint128(advanceRateBps))),
             FHE.asEuint128(BPS)
         );
 
-        // feeAmount = encAmount * discountRateBps / BPS
         euint128 encFee = FHE.div(
             FHE.mul(encAmount, FHE.asEuint128(uint128(discountRateBps))),
             FHE.asEuint128(BPS)
         );
 
-        // repayAmount = advanceAmount + feeAmount
         euint128 encRepay = FHE.add(encAdvance, encFee);
 
-        // FHE access: allow this contract to read the computed values
         FHE.allowThis(encAdvance);
         FHE.allowThis(encFee);
         FHE.allowThis(encRepay);
-
-        // Allow the SME to see their repay obligation
         FHE.allow(encRepay, submitter);
         FHE.allow(encAdvance, submitter);
-
-        // Allow the lender to see their advance & fee
         FHE.allow(encAdvance, msg.sender);
         FHE.allow(encFee, msg.sender);
 
-        // Store position
+        uint256 maturity = block.timestamp + (uint256(tenorDays) * 1 days);
+
         positions[tokenId] = Position({
             tokenId: tokenId,
             lender: msg.sender,
@@ -190,7 +202,10 @@ contract FinancingPool {
             advanceRateBps: advanceRateBps,
             discountRateBps: discountRateBps,
             fundedAt: block.timestamp,
+            maturityDate: maturity,
+            gracePeriodEnd: maturity + GRACE_PERIOD,
             settled: false,
+            status: PositionStatus.ACTIVE,
             encAdvanceAmount: encAdvance,
             encFeeAmount: encFee,
             encRepayAmount: encRepay
@@ -215,7 +230,6 @@ contract FinancingPool {
         require(msg.sender == pos.sme, "FinancingPool: only SME can repay");
         require(!settlementRequested[tokenId], "FinancingPool: settlement already requested");
 
-        // Mark repay amount as publicly decryptable
         FHE.allowPublic(pos.encRepayAmount);
         settlementRequested[tokenId] = true;
     }
@@ -225,11 +239,6 @@ contract FinancingPool {
     // ──────────────────────────────────────────────
 
     /// @notice Finalize settlement — publish decrypted repay amount with proof.
-    ///         Call after requestSettlement. Frontend uses SDK decryptForTx to get
-    ///         the plaintext + signature, then passes them here.
-    /// @param tokenId The funded invoice token
-    /// @param _decryptedRepay The plaintext repay amount from off-chain decryption
-    /// @param _signature The Threshold Network signature proving correctness
     function finalizeSettlement(
         uint256 tokenId,
         uint128 _decryptedRepay,
@@ -239,8 +248,6 @@ contract FinancingPool {
         require(!settlementReady[tokenId], "FinancingPool: already finalized");
 
         Position storage pos = positions[tokenId];
-
-        // Verify and publish — reverts if signature is invalid
         FHE.publishDecryptResult(pos.encRepayAmount, _decryptedRepay, _signature);
 
         repayAmountPlain[tokenId] = _decryptedRepay;
@@ -251,9 +258,7 @@ contract FinancingPool {
     // Repayment — Step 3: SME sends repayment, contract settles
     // ──────────────────────────────────────────────
 
-    /// @notice SME sends repayment. Contract settles the position:
-    ///         lender receives principal + fee, token is burned.
-    /// @param tokenId The funded invoice token
+    /// @notice SME sends repayment. Contract settles the position and updates reputation.
     function repay(uint256 tokenId) external payable {
         require(isFunded[tokenId], "FinancingPool: not funded");
         require(settlementReady[tokenId], "FinancingPool: settlement not finalized");
@@ -265,24 +270,60 @@ contract FinancingPool {
         uint128 repayAmount = repayAmountPlain[tokenId];
         require(msg.value >= repayAmount, "FinancingPool: insufficient repayment");
 
-        // Transfer repayment to lender
         (bool sent, ) = pos.lender.call{value: repayAmount}("");
         require(sent, "FinancingPool: lender transfer failed");
 
-        // Refund excess
         uint256 excess = msg.value - repayAmount;
         if (excess > 0) {
             (bool refunded, ) = msg.sender.call{value: excess}("");
             require(refunded, "FinancingPool: refund failed");
         }
 
-        // Burn the escrowed token
         invoiceVault.burn(address(this), tokenId, 1);
 
         pos.settled = true;
+        pos.status = PositionStatus.REPAID;
+
+        // Wave 2: update encrypted reputation on successful repayment
+        creditOracle.updateReputation(pos.sme);
 
         emit RepaymentReceived(tokenId, msg.sender, repayAmount);
         emit PositionSettled(tokenId, pos.lender, pos.sme);
+    }
+
+    // ──────────────────────────────────────────────
+    // Wave 2: Grace period + escalation
+    // ──────────────────────────────────────────────
+
+    /// @notice Wave 2: Callable by anyone after maturity to open the grace period.
+    ///         Transitions position from ACTIVE to GRACE.
+    /// @param tokenId The funded invoice token
+    function enterGracePeriod(uint256 tokenId) external {
+        require(isFunded[tokenId], "FinancingPool: not funded");
+        Position storage pos = positions[tokenId];
+        require(!pos.settled, "FinancingPool: already settled");
+        require(pos.status == PositionStatus.ACTIVE, "FinancingPool: not active");
+        require(block.timestamp > pos.maturityDate, "FinancingPool: maturity not reached");
+
+        pos.status = PositionStatus.GRACE;
+        emit GracePeriodStarted(tokenId, pos.gracePeriodEnd);
+    }
+
+    /// @notice Wave 2: Lender triggers escalation after grace period expires.
+    ///         Emits EscalationTriggered. Frontend listens and calls decryptForTx
+    ///         to obtain buyer identity + invoice amount for legal recovery.
+    ///         No admin can force-settle — only lender, only after grace expires.
+    /// @param tokenId The funded invoice token
+    function triggerEscalation(uint256 tokenId) external {
+        require(isFunded[tokenId], "FinancingPool: not funded");
+        Position storage pos = positions[tokenId];
+        require(msg.sender == pos.lender, "FinancingPool: only lender can escalate");
+        require(pos.status == PositionStatus.GRACE, "FinancingPool: not in grace period");
+        require(block.timestamp > pos.gracePeriodEnd, "FinancingPool: grace period still active");
+
+        pos.status = PositionStatus.ESCALATED;
+
+        emit EscalationTriggered(tokenId, pos.lender, pos.sme);
     }
 
     // ──────────────────────────────────────────────
@@ -304,7 +345,10 @@ contract FinancingPool {
             uint16 advanceRateBps,
             uint16 discountRateBps,
             uint256 fundedAt,
-            bool settled
+            uint256 maturityDate,
+            uint256 gracePeriodEnd,
+            bool settled,
+            PositionStatus status
         )
     {
         Position storage pos = positions[tokenId];
@@ -314,7 +358,10 @@ contract FinancingPool {
             pos.advanceRateBps,
             pos.discountRateBps,
             pos.fundedAt,
-            pos.settled
+            pos.maturityDate,
+            pos.gracePeriodEnd,
+            pos.settled,
+            pos.status
         );
     }
 

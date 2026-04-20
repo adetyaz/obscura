@@ -17,6 +17,25 @@ export const financingPoolAbi = [
 		inputs: [
 			{ indexed: true, internalType: 'uint256', name: 'tokenId', type: 'uint256' },
 			{ indexed: true, internalType: 'address', name: 'lender', type: 'address' },
+			{ indexed: true, internalType: 'address', name: 'borrower', type: 'address' }
+		],
+		name: 'EscalationTriggered',
+		type: 'event'
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{ indexed: true, internalType: 'uint256', name: 'tokenId', type: 'uint256' },
+			{ indexed: false, internalType: 'uint256', name: 'gracePeriodEnd', type: 'uint256' }
+		],
+		name: 'GracePeriodStarted',
+		type: 'event'
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{ indexed: true, internalType: 'uint256', name: 'tokenId', type: 'uint256' },
+			{ indexed: true, internalType: 'address', name: 'lender', type: 'address' },
 			{ indexed: true, internalType: 'address', name: 'smeAddress', type: 'address' },
 			{ indexed: false, internalType: 'uint16', name: 'advanceRateBps', type: 'uint16' },
 			{ indexed: false, internalType: 'uint16', name: 'discountRateBps', type: 'uint16' }
@@ -53,9 +72,23 @@ export const financingPoolAbi = [
 	},
 	{
 		inputs: [],
+		name: 'GRACE_PERIOD',
+		outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [],
 		name: 'creditOracle',
 		outputs: [{ internalType: 'contract ICreditOracle', name: '', type: 'address' }],
 		stateMutability: 'view',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
+		name: 'enterGracePeriod',
+		outputs: [],
+		stateMutability: 'nonpayable',
 		type: 'function'
 	},
 	{
@@ -73,7 +106,8 @@ export const financingPoolAbi = [
 		inputs: [
 			{ internalType: 'uint256', name: 'tokenId', type: 'uint256' },
 			{ internalType: 'uint16', name: 'advanceRateBps', type: 'uint16' },
-			{ internalType: 'uint16', name: 'discountRateBps', type: 'uint16' }
+			{ internalType: 'uint16', name: 'discountRateBps', type: 'uint16' },
+			{ internalType: 'uint16', name: 'tenorDays', type: 'uint16' }
 		],
 		name: 'fundInvoice',
 		outputs: [],
@@ -117,7 +151,10 @@ export const financingPoolAbi = [
 			{ internalType: 'uint16', name: 'advanceRateBps', type: 'uint16' },
 			{ internalType: 'uint16', name: 'discountRateBps', type: 'uint16' },
 			{ internalType: 'uint256', name: 'fundedAt', type: 'uint256' },
-			{ internalType: 'bool', name: 'settled', type: 'bool' }
+			{ internalType: 'uint256', name: 'maturityDate', type: 'uint256' },
+			{ internalType: 'uint256', name: 'gracePeriodEnd', type: 'uint256' },
+			{ internalType: 'bool', name: 'settled', type: 'bool' },
+			{ internalType: 'enum FinancingPool.PositionStatus', name: 'status', type: 'uint8' }
 		],
 		stateMutability: 'view',
 		type: 'function'
@@ -160,7 +197,10 @@ export const financingPoolAbi = [
 			{ internalType: 'uint16', name: 'advanceRateBps', type: 'uint16' },
 			{ internalType: 'uint16', name: 'discountRateBps', type: 'uint16' },
 			{ internalType: 'uint256', name: 'fundedAt', type: 'uint256' },
+			{ internalType: 'uint256', name: 'maturityDate', type: 'uint256' },
+			{ internalType: 'uint256', name: 'gracePeriodEnd', type: 'uint256' },
 			{ internalType: 'bool', name: 'settled', type: 'bool' },
+			{ internalType: 'enum FinancingPool.PositionStatus', name: 'status', type: 'uint8' },
 			{ internalType: 'euint128', name: 'encAdvanceAmount', type: 'bytes32' },
 			{ internalType: 'euint128', name: 'encFeeAmount', type: 'bytes32' },
 			{ internalType: 'euint128', name: 'encRepayAmount', type: 'bytes32' }
@@ -206,6 +246,13 @@ export const financingPoolAbi = [
 	{
 		inputs: [{ internalType: 'address', name: 'newOwner', type: 'address' }],
 		name: 'transferOwnership',
+		outputs: [],
+		stateMutability: 'nonpayable',
+		type: 'function'
+	},
+	{
+		inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
+		name: 'triggerEscalation',
 		outputs: [],
 		stateMutability: 'nonpayable',
 		type: 'function'

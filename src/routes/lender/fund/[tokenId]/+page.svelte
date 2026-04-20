@@ -11,6 +11,7 @@
 
 	let advanceRateBps = $state(8500);
 	let discountRateBps = $state(200);
+	let tenorDays = $state(90);
 	let step = $state('');
 	let error = $state('');
 	let isProcessing = $state(false);
@@ -67,7 +68,12 @@
 
 		try {
 			step = 'Submitting funding transaction…';
-			const hash = await lenderStore.fundInvoice(invoice.tokenId, advanceRateBps, discountRateBps);
+			const hash = await lenderStore.fundInvoice(
+				invoice.tokenId,
+				advanceRateBps,
+				discountRateBps,
+				tenorDays
+			);
 			txHash = hash;
 
 			step = 'Triggering USDC disbursement via Privara…';
@@ -180,7 +186,7 @@
 				<!-- Funding Terms -->
 				<div class="border border-border p-6">
 					<p class="mb-4 font-mono text-[10px] tracking-widest text-muted">FUNDING TERMS</p>
-					<div class="grid grid-cols-2 gap-4">
+					<div class="grid grid-cols-3 gap-4">
 						<div>
 							<label
 								for="advance-rate"
@@ -223,6 +229,25 @@
 								{(discountRateBps / 100).toFixed(2)}% fee (your yield)
 							</p>
 						</div>
+						<div>
+							<label
+								for="tenor-days"
+								class="mb-1 block font-mono text-[10px] tracking-widest text-muted"
+							>
+								TENOR (DAYS)
+							</label>
+							<input
+								id="tenor-days"
+								type="number"
+								min="7"
+								max="365"
+								step="1"
+								bind:value={tenorDays}
+								disabled={isProcessing || invoice.funded}
+								class="w-full border border-border bg-paper px-3 py-2 font-mono text-sm text-ink outline-none focus:border-ink disabled:opacity-50"
+							/>
+							<p class="mt-1 font-mono text-[10px] text-muted">Repayment window</p>
+						</div>
 					</div>
 
 					<!-- Computed summary -->
@@ -237,7 +262,7 @@
 						</div>
 						<div>
 							<p class="font-mono text-[10px] tracking-widest text-muted">TENOR</p>
-							<p class="mt-1 font-mono text-base text-ink">90 DAYS</p>
+							<p class="mt-1 font-mono text-base text-ink">{tenorDays} DAYS</p>
 						</div>
 					</div>
 
