@@ -43,11 +43,11 @@
 		try {
 			// Step 1: Call FinancingPool.fundInvoice on-chain
 			step = 'Submitting funding transaction…';
-			await lenderStore.fundInvoice(invoice.tokenId, advanceRateBps, discountRateBps);
+			await lenderStore.fundInvoice(invoice.tokenId, advanceRateBps, discountRateBps, 90);
 
-			// Step 2: Trigger Privara disbursement (Wave 1 mock)
+			// Step 2: Trigger Privara escrow creation on ReineiraOS
 			step = 'Triggering USDC disbursement via Privara…';
-			await disburseAdvance(invoice.submitter, 0n);
+			await disburseAdvance(invoice.submitter, 0n, invoice.tokenId);
 
 			step = 'Invoice funded successfully!';
 

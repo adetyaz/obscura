@@ -77,7 +77,7 @@
 			txHash = hash;
 
 			step = 'Triggering USDC disbursement via Privara…';
-			await disburseAdvance(invoice.submitter, 0n);
+			await disburseAdvance(invoice.submitter, 0n, invoice.tokenId);
 
 			step = 'Invoice funded successfully!';
 			funded = true;

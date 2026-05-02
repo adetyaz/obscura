@@ -10,6 +10,10 @@
 			"headers": {
 				"X-Goog-Api-Key": "AQ.Ab8RN6Jv0Dli7SKvI4MVGL3ElOcOHEh_7uKIRQ7nA-cOat8zQg"
 			}
+		},
+		"reineira-docs": {
+			"type": "http",
+			"url": "https://zyx576c546w4m4ag7nzhf467du0wixjg.lambda-url.us-east-2.on.aws/"
 		}
 	}
 }

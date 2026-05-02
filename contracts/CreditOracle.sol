@@ -12,6 +12,10 @@ interface IInvoiceVault {
     function getInvoiceMeta(uint256 tokenId) external view returns (address submitter, uint256 submittedAt, bool active);
 }
 
+interface IBuyerOracle {
+    function getEncryptedScore(bytes32 buyerKey) external view returns (euint8);
+}
+
 /// @title CreditOracle
 /// @notice FHE credit scoring engine. Computes a risk score on encrypted invoice data
 ///         using range checks and FHE.select — no raw data exposed.
@@ -26,6 +30,9 @@ contract CreditOracle {
 
     /// @notice Wave 2: FinancingPool address — authorized to call updateReputation
     address public financingPool;
+
+    /// @notice Wave 3: External buyer verification oracle (optional)
+    address public buyerOracle;
 
     // ──────────────────────────────────────────────
     // Pool-tier scoring constants
@@ -87,6 +94,7 @@ contract CreditOracle {
     event ScoreFinalized(uint256 indexed tokenId, uint8 score);
     event ReputationUpdated(address indexed borrower, uint8 repaymentCount);
     event FinancingPoolUpdated(address indexed pool);
+    event BuyerOracleUpdated(address indexed buyerOracle);
     event GovRefHashSet();
 
     // ──────────────────────────────────────────────
@@ -124,6 +132,13 @@ contract CreditOracle {
         emit FinancingPoolUpdated(_financingPool);
     }
 
+    /// @notice Wave 3: Set external buyer verification oracle
+    function setBuyerOracle(address _buyerOracle) external onlyOwner {
+        require(_buyerOracle != address(0), "CreditOracle: zero address");
+        buyerOracle = _buyerOracle;
+        emit BuyerOracleUpdated(_buyerOracle);
+    }
+
     /// @notice Wave 2: Set the known government entity reference hash (encrypted)
     ///         This is the FHE-encrypted value of the government contract prefix/ID
     ///         that valid government invoices must match.
@@ -153,13 +168,15 @@ contract CreditOracle {
         IInvoiceVault.PoolTier tier = invoiceVault.getPoolTier(tokenId);
         euint8 totalScore;
 
+        bytes32 buyerKey = keccak256(abi.encodePacked(tokenId));
+
         if (tier == IInvoiceVault.PoolTier.GOVERNMENT) {
             totalScore = _scoreGovernmentInvoice(tokenId);
         } else if (tier == IInvoiceVault.PoolTier.RETAIL) {
-            totalScore = _scoreCorporateInvoice(tokenId, MAX_AMOUNT_RETAIL);
+            totalScore = _scoreCorporateInvoice(tokenId, MAX_AMOUNT_RETAIL, buyerKey);
         } else {
             // INSTITUTIONAL (Wave 1 default)
-            totalScore = _scoreCorporateInvoice(tokenId, MAX_AMOUNT);
+            totalScore = _scoreCorporateInvoice(tokenId, MAX_AMOUNT, buyerKey);
         }
 
         encryptedScores[tokenId] = totalScore;
@@ -171,7 +188,7 @@ contract CreditOracle {
     }
 
     /// @dev Score a corporate or retail invoice — range checks on amount + due date
-    function _scoreCorporateInvoice(uint256 tokenId, uint128 maxAmount) internal returns (euint8) {
+    function _scoreCorporateInvoice(uint256 tokenId, uint128 maxAmount, bytes32 buyerKey) internal returns (euint8) {
         euint128 encAmount = invoiceVault.getEncryptedAmount(tokenId);
         euint128 encDueDate = invoiceVault.getEncryptedDueDate(tokenId);
 
@@ -192,8 +209,13 @@ contract CreditOracle {
             FHE.asEuint8(0)
         );
 
-        // ── Mock buyer check — always passes ──
-        euint8 buyerScore = FHE.asEuint8(SCORE_BUYER_OK);
+        // ── Wave 3: buyer verification from external oracle (fallback to mock if unset) ──
+        euint8 buyerScore;
+        if (buyerOracle == address(0)) {
+            buyerScore = FHE.asEuint8(SCORE_BUYER_OK);
+        } else {
+            buyerScore = IBuyerOracle(buyerOracle).getEncryptedScore(buyerKey);
+        }
 
         return FHE.add(FHE.add(amountScore, dueDateScore), buyerScore);
     }
